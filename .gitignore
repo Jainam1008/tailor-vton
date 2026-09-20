@@ -1,0 +1,33 @@
+# Environment / secrets
+.env
+.env.*
+!.env.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.venv/
+venv/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Catalogue review tool output (generated images, never checked in)
+catalogue/output_review/
+
+# Raw fabric swatch photos (large, not source-controlled)
+catalogue/fabric_photos/
+catalogue/raw_photos/
+
+# OS / editor cruft
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# Node (kiosk tooling, if any is ever added, e.g. wrangler/local previews)
+node_modules/
+.wrangler/
