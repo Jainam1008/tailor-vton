@@ -18,9 +18,11 @@ env/
 # Catalogue review tool output (generated images, never checked in)
 catalogue/output_review/
 
+# backend/test_tryon.py's default output image
+backend/test_output.jpg
+
 # Raw fabric swatch photos (large, not source-controlled)
-catalogue/fabric_photos/
-catalogue/raw_photos/
+catalogue/fabrics/
 
 # OS / editor cruft
 .DS_Store
@@ -31,3 +33,6 @@ Thumbs.db
 # Node (kiosk tooling, if any is ever added, e.g. wrangler/local previews)
 node_modules/
 .wrangler/
+
+# Kiosk's real config (holds KIOSK_TOKEN) - kiosk/config.example.js is the template
+kiosk/config.js

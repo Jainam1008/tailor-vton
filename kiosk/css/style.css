@@ -1,0 +1,742 @@
+/* ==========================================================================
+   tailor-vton kiosk - design system
+   Premium men's tailoring look: deep navy/charcoal, warm gold accents, a
+   refined serif for headings. Built for a portrait 1080x1920 touchscreen
+   first, but adapts to landscape and phone widths (see @media queries).
+   ========================================================================== */
+
+@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@500;600;700&display=swap");
+
+:root {
+  --color-navy: #0e1a2b;
+  --color-navy-deep: #08111d;
+  --color-charcoal: #1c1e22;
+  --color-gold: #c9a961;
+  --color-gold-bright: #e0c17d;
+  --color-cream: #f3efe6;
+  --color-cream-dim: #cfc9ba;
+  --color-error: #c15a52;
+  --color-success: #6f9c76;
+
+  --font-heading: "Playfair Display", Georgia, "Times New Roman", serif;
+  --font-body: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+
+  --touch-min: 80px;
+  --space-xs: 0.5rem;
+  --space-sm: 1rem;
+  --space-md: 1.75rem;
+  --space-lg: 2.75rem;
+  --space-xl: 4rem;
+
+  --radius: 10px;
+  --transition: 320ms ease;
+
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* The `hidden` attribute is used throughout (camera controls, silhouette
+   overlay, staff status, etc.) to truly remove elements from layout. Several
+   component classes below (.btn-row, .camera-frame video, ...) set their own
+   `display`, which - being an author stylesheet rule - otherwise beats the
+   browser's default `[hidden] { display: none }` regardless of selector
+   specificity. This keeps `hidden` authoritative everywhere. */
+[hidden] {
+  display: none !important;
+}
+
+html,
+body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--color-navy-deep);
+  color: var(--color-cream);
+  font-family: var(--font-body);
+  font-size: 18px;
+  line-height: 1.5;
+  overflow: hidden;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  margin: 0 0 var(--space-sm) 0;
+}
+
+p {
+  margin: 0 0 var(--space-sm) 0;
+  color: var(--color-cream-dim);
+}
+
+img {
+  max-width: 100%;
+  display: block;
+}
+
+button {
+  font-family: var(--font-body);
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   App shell + screens
+   -------------------------------------------------------------------------- */
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% -10%, rgba(201, 169, 97, 0.12), transparent 55%),
+    linear-gradient(180deg, var(--color-navy) 0%, var(--color-navy-deep) 100%);
+}
+
+.screen {
+  display: none;
+  position: absolute;
+  inset: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-lg) var(--space-md);
+  text-align: center;
+  opacity: 0;
+  transition: opacity var(--transition);
+}
+
+.screen.is-active {
+  display: flex;
+  opacity: 1;
+}
+
+.screen-scroll {
+  overflow-y: auto;
+  justify-content: flex-start;
+  padding-top: var(--space-xl);
+}
+
+/* --------------------------------------------------------------------------
+   Buttons
+   -------------------------------------------------------------------------- */
+
+.btn {
+  min-height: var(--touch-min);
+  min-width: var(--touch-min);
+  padding: 0 var(--space-lg);
+  border-radius: var(--radius);
+  border: 1px solid transparent;
+  font-size: 1.15rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  transition: transform 120ms ease, background var(--transition), border-color var(--transition);
+}
+
+.btn:active {
+  transform: scale(0.97);
+}
+
+.btn-primary {
+  background: var(--color-gold);
+  color: var(--color-navy-deep);
+}
+
+.btn-primary:hover {
+  background: var(--color-gold-bright);
+}
+
+.btn-secondary {
+  background: transparent;
+  color: var(--color-cream);
+  border-color: rgba(243, 239, 230, 0.35);
+}
+
+.btn-secondary:hover {
+  border-color: var(--color-gold);
+  color: var(--color-gold-bright);
+}
+
+.btn-danger {
+  background: transparent;
+  color: var(--color-error);
+  border-color: var(--color-error);
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-sm);
+  justify-content: center;
+  margin-top: var(--space-md);
+}
+
+.btn-back {
+  position: absolute;
+  top: var(--space-md);
+  left: var(--space-md);
+  min-height: 56px;
+  min-width: 56px;
+  padding: 0 var(--space-md);
+  background: rgba(255, 255, 255, 0.06);
+  color: var(--color-cream-dim);
+  border: 1px solid rgba(243, 239, 230, 0.2);
+  border-radius: var(--radius);
+  font-size: 1rem;
+}
+
+/* --------------------------------------------------------------------------
+   Branding / header
+   -------------------------------------------------------------------------- */
+
+.brand {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+.brand img {
+  max-height: 120px;
+  max-width: 60vw;
+}
+
+.brand .store-name {
+  font-family: var(--font-heading);
+  font-size: clamp(1.8rem, 5vw, 3rem);
+  color: var(--color-cream);
+  letter-spacing: 0.04em;
+}
+
+.brand-mini {
+  position: absolute;
+  top: var(--space-sm);
+  right: var(--space-md);
+  font-family: var(--font-heading);
+  font-size: 1rem;
+  color: var(--color-cream-dim);
+  opacity: 0.7;
+}
+
+/* --------------------------------------------------------------------------
+   Attract screen
+   -------------------------------------------------------------------------- */
+
+#screen-attract .brand {
+  animation: gentle-glow 5s ease-in-out infinite;
+}
+
+@keyframes gentle-glow {
+  0%, 100% { filter: drop-shadow(0 0 0 rgba(201, 169, 97, 0)); }
+  50% { filter: drop-shadow(0 0 28px rgba(201, 169, 97, 0.35)); }
+}
+
+.attract-cta {
+  margin-top: var(--space-xl);
+  font-family: var(--font-heading);
+  font-size: clamp(1.4rem, 4vw, 2.2rem);
+  color: var(--color-gold);
+  animation: pulse-fade 2.4s ease-in-out infinite;
+}
+
+@keyframes pulse-fade {
+  0%, 100% { opacity: 0.55; }
+  50% { opacity: 1; }
+}
+
+.attract-tapzone {
+  position: absolute;
+  inset: 0;
+  border: none;
+  background: transparent;
+  padding: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Generic content blocks
+   -------------------------------------------------------------------------- */
+
+.panel {
+  max-width: 720px;
+  width: 100%;
+}
+
+.panel-title {
+  font-size: clamp(1.6rem, 4vw, 2.4rem);
+}
+
+.body-text {
+  font-size: 1.15rem;
+  color: var(--color-cream-dim);
+}
+
+.fine-print {
+  font-size: 0.85rem;
+  color: var(--color-cream-dim);
+  opacity: 0.75;
+  margin-top: var(--space-md);
+}
+
+/* --------------------------------------------------------------------------
+   Camera screen
+   -------------------------------------------------------------------------- */
+
+.camera-frame {
+  position: relative;
+  width: min(90vw, 480px);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: #000;
+  border: 2px solid rgba(201, 169, 97, 0.4);
+}
+
+.camera-frame video,
+.camera-frame img.captured-frame {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transform: scaleX(-1); /* mirror, feels natural for a selfie-style preview */
+}
+
+.silhouette-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.silhouette-overlay svg {
+  width: 62%;
+  height: 92%;
+  opacity: 0.55;
+}
+
+.countdown-overlay {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 17, 29, 0.35);
+  font-family: var(--font-heading);
+  font-size: 7rem;
+  color: var(--color-gold-bright);
+  text-shadow: 0 2px 18px rgba(0, 0, 0, 0.6);
+}
+
+.countdown-overlay.is-active {
+  display: flex;
+}
+
+.camera-tips {
+  max-width: 480px;
+  margin-top: var(--space-md);
+}
+
+.camera-error {
+  display: none;
+  max-width: 480px;
+  color: var(--color-error);
+  margin-top: var(--space-sm);
+}
+
+.camera-error.is-active {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Grids: department / style / fabric
+   -------------------------------------------------------------------------- */
+
+.choice-grid {
+  display: grid;
+  /* A fixed max (not 1fr) keeps a lone card from stretching to fill the
+     whole row when there's only one department/style; justify-content
+     centers the row instead of letting columns grow to fill leftover
+     space. */
+  grid-template-columns: repeat(auto-fit, minmax(220px, 280px));
+  justify-content: center;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 1100px;
+  margin-top: var(--space-md);
+}
+
+.choice-card {
+  min-height: var(--touch-min);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(243, 239, 230, 0.15);
+  border-radius: var(--radius);
+  padding: var(--space-lg) var(--space-md);
+  color: var(--color-cream);
+  font-family: var(--font-heading);
+  font-size: 1.3rem;
+  transition: border-color var(--transition), background var(--transition), transform 120ms ease;
+}
+
+.choice-card:active {
+  transform: scale(0.98);
+}
+
+.choice-card:hover {
+  border-color: var(--color-gold);
+  background: rgba(201, 169, 97, 0.08);
+}
+
+.fabric-grid {
+  display: grid;
+  /* Same fixed-max reasoning as .choice-grid above - a style with only
+     one or two fabrics shouldn't produce giant stretched cards. */
+  grid-template-columns: repeat(auto-fit, minmax(160px, 200px));
+  justify-content: center;
+  gap: var(--space-sm);
+  width: 100%;
+  max-width: 1100px;
+  margin-top: var(--space-md);
+}
+
+.fabric-card {
+  min-height: var(--touch-min);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(243, 239, 230, 0.15);
+  border-radius: var(--radius);
+  padding: var(--space-sm);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  transition: border-color var(--transition), transform 120ms ease;
+}
+
+.fabric-card:active {
+  transform: scale(0.98);
+}
+
+.fabric-card:hover {
+  border-color: var(--color-gold);
+}
+
+.fabric-card img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  border-radius: 6px;
+}
+
+.fabric-card .fabric-name {
+  font-size: 0.95rem;
+  color: var(--color-cream);
+}
+
+.fabric-card .fabric-code {
+  font-size: 0.75rem;
+  color: var(--color-cream-dim);
+  opacity: 0.7;
+}
+
+.empty-state {
+  color: var(--color-cream-dim);
+  padding: var(--space-lg);
+}
+
+/* --------------------------------------------------------------------------
+   Processing screen
+   -------------------------------------------------------------------------- */
+
+.spinner {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 3px solid rgba(201, 169, 97, 0.2);
+  border-top-color: var(--color-gold);
+  animation: spin 1.1s linear infinite;
+  margin-bottom: var(--space-md);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.processing-message {
+  font-family: var(--font-heading);
+  font-size: 1.4rem;
+  min-height: 2.4em;
+  color: var(--color-cream);
+}
+
+/* --------------------------------------------------------------------------
+   Result screen
+   -------------------------------------------------------------------------- */
+
+.result-layout {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+  width: 100%;
+  max-width: 640px;
+}
+
+.result-image-frame {
+  position: relative;
+  width: min(80vw, 460px);
+  aspect-ratio: 2 / 3;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 2px solid rgba(201, 169, 97, 0.4);
+  background: #000;
+}
+
+.result-image-frame img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.result-swatch-info {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: var(--radius);
+  padding: var(--space-xs) var(--space-md);
+}
+
+.result-swatch-info img {
+  width: 48px;
+  height: 48px;
+  border-radius: 6px;
+  object-fit: cover;
+}
+
+.result-swatch-info .name {
+  font-size: 1rem;
+  color: var(--color-cream);
+}
+
+.result-swatch-info .code {
+  font-size: 0.8rem;
+  color: var(--color-cream-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Compare overlay
+   -------------------------------------------------------------------------- */
+
+.compare-grid {
+  display: flex;
+  gap: var(--space-sm);
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: var(--space-md);
+}
+
+.compare-item {
+  width: min(28vw, 220px);
+}
+
+.compare-item .result-image-frame {
+  width: 100%;
+}
+
+.compare-item .label {
+  margin-top: 6px;
+  font-size: 0.85rem;
+  color: var(--color-cream-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Overlays: idle warning, staff PIN/menu, demo badge
+   -------------------------------------------------------------------------- */
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(8, 17, 29, 0.88);
+  z-index: 50;
+  padding: var(--space-md);
+}
+
+.overlay.is-active {
+  display: flex;
+}
+
+.overlay-panel {
+  background: var(--color-charcoal);
+  border: 1px solid rgba(201, 169, 97, 0.3);
+  border-radius: var(--radius);
+  padding: var(--space-lg);
+  max-width: 420px;
+  width: 100%;
+  text-align: center;
+}
+
+.overlay-panel-wide {
+  max-width: 900px;
+}
+
+.btn-mt {
+  margin-top: var(--space-sm);
+}
+
+.idle-countdown {
+  font-family: var(--font-heading);
+  font-size: 3.5rem;
+  color: var(--color-gold);
+  margin: var(--space-sm) 0;
+}
+
+.pin-display {
+  font-size: 2rem;
+  letter-spacing: 0.5em;
+  min-height: 2.5rem;
+  margin: var(--space-sm) 0;
+  color: var(--color-cream);
+}
+
+.pin-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0;
+}
+
+.pin-grid button {
+  min-height: 64px;
+  border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(243, 239, 230, 0.2);
+  color: var(--color-cream);
+  font-size: 1.3rem;
+}
+
+.pin-error {
+  color: var(--color-error);
+  min-height: 1.4em;
+  font-size: 0.9rem;
+}
+
+.staff-menu-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+  margin: var(--space-sm) 0;
+}
+
+.staff-menu-list .btn {
+  width: 100%;
+}
+
+.staff-status {
+  font-size: 0.9rem;
+  color: var(--color-cream-dim);
+  white-space: pre-wrap;
+  text-align: left;
+  max-height: 30vh;
+  overflow-y: auto;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: var(--space-xs);
+  margin-top: var(--space-xs);
+}
+
+#staff-trigger {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 70px;
+  height: 70px;
+  z-index: 60;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
+.demo-badge {
+  position: fixed;
+  top: var(--space-sm);
+  right: var(--space-sm);
+  background: var(--color-gold);
+  color: var(--color-navy-deep);
+  font-weight: 700;
+  font-size: 0.75rem;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  border-radius: 999px;
+  z-index: 70;
+  display: none;
+}
+
+.demo-badge.is-active {
+  display: block;
+}
+
+/* --------------------------------------------------------------------------
+   Fatal error / setup screen
+   -------------------------------------------------------------------------- */
+
+.fatal-panel {
+  max-width: 560px;
+  background: rgba(193, 90, 82, 0.08);
+  border: 1px solid var(--color-error);
+  border-radius: var(--radius);
+  padding: var(--space-lg);
+}
+
+/* --------------------------------------------------------------------------
+   Orientation / size adjustments
+   -------------------------------------------------------------------------- */
+
+/* Landscape (kiosk screen rotated, laptop browser, tablet landscape) */
+@media (orientation: landscape) and (min-width: 700px) {
+  .camera-frame {
+    aspect-ratio: 3 / 4;
+    width: min(50vh, 420px);
+  }
+
+  .result-image-frame {
+    aspect-ratio: 3 / 4;
+    width: min(46vh, 380px);
+  }
+}
+
+/* Small phones */
+@media (max-width: 420px) {
+  body {
+    font-size: 16px;
+  }
+
+  .panel-title {
+    font-size: 1.5rem;
+  }
+
+  .btn {
+    padding: 0 var(--space-md);
+    font-size: 1rem;
+  }
+
+  .choice-grid,
+  .fabric-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 200px));
+  }
+}

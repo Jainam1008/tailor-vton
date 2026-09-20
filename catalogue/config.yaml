@@ -1,0 +1,222 @@
+# catalogue/config.yaml
+#
+# This file is the single source of truth for what garment styles the
+# catalogue tools know about. Add a new style by adding a new block under
+# `styles:` - no Python code changes needed in generate.py or review.py.
+#
+# ---------------------------------------------------------------------------
+# HOW TO ADD A NEW STYLE
+# ---------------------------------------------------------------------------
+# 1. Take one clean photo of the garment on a plain background (front view,
+#    full garment visible, no person's face) and save it under
+#    catalogue/templates/<id>.jpg - the filename must match `template` below.
+# 2. Copy one of the blocks below and edit id, name, department,
+#    fabric_prefixes, tryon_plan and the prompt text.
+# 3. Save this file and run generate.py again.
+#
+# ---------------------------------------------------------------------------
+# FIELDS
+# ---------------------------------------------------------------------------
+# id                - short unique code, used in filenames. Letters/digits/
+#                     underscores only.
+# name              - what customers see on the kiosk screen.
+# department        - one of: suiting, shirting, ethnic. Picks which fal.ai
+#                     model generates this style's images (see `models:`
+#                     below) and which fabric photos it can use.
+# fabric_prefixes   - which fabric-code prefixes this style accepts. Fabric
+#                     photos live in catalogue/fabrics/ and are named
+#                     <PREFIX>-<number>.jpg, e.g. SU-01.jpg. A style with
+#                     fabric_prefixes: [SU] only ever gets matched against
+#                     fabrics named SU-*.
+# template          - path (relative to the repo root) to that one clean
+#                     reference photo of the garment.
+# tryon_plan        - how the KIOSK should apply this style's catalogue
+#                     image during a live try-on (Stage 2, backend/). Either
+#                     a single category ("tops", "bottoms", or "one-pieces"),
+#                     or a list of categories run as separate passes on the
+#                     SAME catalogue image, e.g. [bottoms, tops] for a suit -
+#                     the backend's /tryon endpoint applies the lower-body
+#                     pass first, then the upper-body pass, both using this
+#                     one generated image. This does NOT affect generate.py -
+#                     it always makes exactly one catalogue image per
+#                     fabric x style; tryon_plan is just carried through into
+#                     kiosk/catalogue/catalogue.json for the kiosk to read.
+# prompt            - the exact instruction sent to the image-editing model,
+#                     along with the template photo and the fabric swatch
+#                     photo. Keep the closing sentence (plain background,
+#                     front view, etc.) in every style's prompt - it's what
+#                     keeps catalogue photos looking consistent with each
+#                     other on the kiosk screen.
+# ---------------------------------------------------------------------------
+
+# Which fal.ai image-editing model generates each department's images, and
+# roughly what each generated image costs (used only to estimate cost
+# before a run starts - see catalogue/README.md for how to check the real,
+# current price on fal.ai's pricing pages, since fal can change pricing).
+models:
+  suiting:
+    endpoint: fal-ai/flux-2-pro/edit
+    approx_cost_usd: 0.05
+  shirting:
+    endpoint: fal-ai/flux-2-pro/edit
+    approx_cost_usd: 0.05
+  ethnic:
+    endpoint: fal-ai/nano-banana-2/edit
+    approx_cost_usd: 0.08
+
+styles:
+  - id: two_piece_suit
+    name: "Two-Piece Suit"
+    department: suiting
+    fabric_prefixes: [SU]
+    template: catalogue/templates/two_piece_suit.jpg
+    tryon_plan: [bottoms, tops]
+    prompt: >
+      Recreate this exact template garment - a two-piece suit consisting of
+      a single-breasted jacket with notch lapels, a standard button closure,
+      welt chest pocket and flap side pockets, worn with matching flat-front
+      trousers - keeping the identical cut, lapel shape, buttons and overall
+      silhouette. Remake it entirely in the fabric shown in the second
+      (swatch) image: preserve that fabric's true colour, weave texture and
+      pattern scale exactly as it appears in the swatch, do not substitute a
+      different colour or pattern. Photograph it against a plain light-grey
+      studio background, front view, full garment visible, no person, no
+      mannequin head.
+
+  - id: three_piece_suit
+    name: "Three-Piece Suit"
+    department: suiting
+    fabric_prefixes: [SU]
+    template: catalogue/templates/three_piece_suit.jpg
+    tryon_plan: [bottoms, tops]
+    prompt: >
+      Recreate this exact template garment - a three-piece suit: a
+      single-breasted jacket with notch lapels over a matching single-breasted
+      waistcoat with a V-neck opening and five buttons, worn with matching
+      flat-front trousers - keeping the identical cut, lapel shape, buttons
+      and overall silhouette of all three pieces. Remake it entirely in the
+      fabric shown in the second (swatch) image: preserve that fabric's true
+      colour, weave texture and pattern scale exactly as it appears in the
+      swatch, do not substitute a different colour or pattern. Photograph it
+      against a plain light-grey studio background, front view, full garment
+      visible, no person, no mannequin head.
+
+  - id: blazer
+    name: "Blazer"
+    department: suiting
+    fabric_prefixes: [SU]
+    template: catalogue/templates/blazer.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a single-breasted blazer with
+      notch lapels, a two-button closure, welt chest pocket and flap side
+      pockets - keeping the identical cut, lapel shape, buttons and overall
+      silhouette. Remake it entirely in the fabric shown in the second
+      (swatch) image: preserve that fabric's true colour, weave texture and
+      pattern scale exactly as it appears in the swatch, do not substitute a
+      different colour or pattern. Photograph it against a plain light-grey
+      studio background, front view, full garment visible, no person, no
+      mannequin head.
+
+  - id: formal_shirt
+    name: "Formal Shirt"
+    department: shirting
+    fabric_prefixes: [SH]
+    template: catalogue/templates/formal_shirt.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a formal button-down shirt with
+      a classic spread collar, a full button placket down the front and
+      buttoned barrel cuffs - keeping the identical cut, collar shape,
+      buttons and overall silhouette. Remake it entirely in the fabric shown
+      in the second (swatch) image: preserve that fabric's true colour,
+      weave texture and pattern scale exactly as it appears in the swatch,
+      do not substitute a different colour or pattern. Photograph it against
+      a plain light-grey studio background, front view, full garment
+      visible, no person, no mannequin head.
+
+  - id: mandarin_collar_shirt
+    name: "Mandarin-Collar Shirt"
+    department: shirting
+    fabric_prefixes: [SH]
+    template: catalogue/templates/mandarin_collar_shirt.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a shirt with a short standing
+      mandarin (band) collar, a full button placket down the front and
+      buttoned barrel cuffs - keeping the identical cut, collar shape,
+      buttons and overall silhouette. Remake it entirely in the fabric shown
+      in the second (swatch) image: preserve that fabric's true colour,
+      weave texture and pattern scale exactly as it appears in the swatch,
+      do not substitute a different colour or pattern. Photograph it against
+      a plain light-grey studio background, front view, full garment
+      visible, no person, no mannequin head.
+
+  - id: kurta
+    name: "Kurta"
+    department: ethnic
+    fabric_prefixes: [ET]
+    template: catalogue/templates/kurta.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a straight-cut kurta falling to
+      around knee length, with a short mandarin/band collar, a button
+      placket at the neck and long sleeves - keeping the identical cut,
+      collar shape, buttons and overall silhouette. Remake it entirely in
+      the fabric shown in the second (swatch) image: preserve that fabric's
+      true colour, weave texture and pattern scale exactly as it appears in
+      the swatch, do not substitute a different colour or pattern.
+      Photograph it against a plain light-grey studio background, front
+      view, full garment visible, no person, no mannequin head.
+
+  - id: sherwani
+    name: "Sherwani"
+    department: ethnic
+    fabric_prefixes: [ET]
+    template: catalogue/templates/sherwani.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a long, knee-length sherwani
+      coat with a mandarin collar, a full button-front closure down the
+      centre and a fitted silhouette - keeping the identical cut, collar
+      shape, buttons and overall silhouette. Remake it entirely in the
+      fabric shown in the second (swatch) image: preserve that fabric's true
+      colour, weave texture and pattern scale exactly as it appears in the
+      swatch, do not substitute a different colour or pattern. Photograph it
+      against a plain light-grey studio background, front view, full
+      garment visible, no person, no mannequin head.
+
+  - id: bandhgala
+    name: "Bandhgala"
+    department: ethnic
+    fabric_prefixes: [ET]
+    template: catalogue/templates/bandhgala.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a bandhgala (Jodhpuri) jacket:
+      a short, fitted, single-breasted coat with a mandarin collar and a
+      concealed or top-fastened button placket closed to the neck - keeping
+      the identical cut, collar shape, buttons and overall silhouette.
+      Remake it entirely in the fabric shown in the second (swatch) image:
+      preserve that fabric's true colour, weave texture and pattern scale
+      exactly as it appears in the swatch, do not substitute a different
+      colour or pattern. Photograph it against a plain light-grey studio
+      background, front view, full garment visible, no person, no mannequin
+      head.
+
+  - id: nehru_jacket
+    name: "Nehru Jacket"
+    department: ethnic
+    fabric_prefixes: [ET]
+    template: catalogue/templates/nehru_jacket.jpg
+    tryon_plan: tops
+    prompt: >
+      Recreate this exact template garment - a short, sleeveless-or-fitted
+      Nehru jacket falling to around hip length, with a mandarin collar and
+      a straight button-front closure to the neck - keeping the identical
+      cut, collar shape, buttons and overall silhouette. Remake it entirely
+      in the fabric shown in the second (swatch) image: preserve that
+      fabric's true colour, weave texture and pattern scale exactly as it
+      appears in the swatch, do not substitute a different colour or
+      pattern. Photograph it against a plain light-grey studio background,
+      front view, full garment visible, no person, no mannequin head.

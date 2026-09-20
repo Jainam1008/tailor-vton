@@ -65,8 +65,13 @@ Cloudflare Pages.
 
 The Modal app in `backend/` MUST be configured so that:
 
-- **GPU type is L4.** Do not upgrade to a larger/more expensive GPU without
-  an explicit reason tied to a measured quality or latency problem.
+- **GPU type is A10.** Benchmarked against L4 on 2026-09-20 with real
+  try-on requests (shirt, kurta, two-pass suit): A10 was ~31% faster on
+  every test AND ~5% cheaper per try-on overall, because it finishes
+  proportionally faster than its ~38%-higher per-second price. Don't
+  downgrade back to L4 or upgrade further without a similar measured
+  comparison — this isn't a default to reach past casually in either
+  direction.
 - **Scales to zero when idle.** No warm/always-on containers. The kiosk is
   used intermittently through the day; paying for idle GPU time is against
   priority #1.

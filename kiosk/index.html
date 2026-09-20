@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Virtual Try-On</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<div id="app">
+
+  <!-- Fatal boot error (e.g. config.js or catalogue.json missing/broken) -->
+  <section class="screen" id="screen-fatal-error">
+    <div class="fatal-panel">
+      <h2 class="panel-title">Something's not set up right</h2>
+      <p class="body-text" id="fatal-error-message">Unknown error.</p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="fatal-error-retry">Retry</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 1. Attract screen -->
+  <section class="screen" id="screen-attract">
+    <button class="attract-tapzone" id="attract-tapzone" aria-label="Tap to begin"></button>
+    <div class="brand">
+      <img id="attract-logo" alt="" src="" hidden>
+      <div class="store-name" id="attract-store-name">Store Name</div>
+    </div>
+    <div class="attract-cta">Tap to try on fabrics</div>
+  </section>
+
+  <!-- 2. Consent screen -->
+  <section class="screen" id="screen-consent">
+    <button class="btn-back" data-go="attract">Back</button>
+    <div class="panel">
+      <h2 class="panel-title">Before we take your photo</h2>
+      <p class="body-text">
+        We'll use your camera to take one photo so you can preview how a
+        fabric and garment would look on you. That photo is used only to
+        create this preview - it is never saved to a device or server, and
+        it is permanently erased the moment your session ends.
+      </p>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="consent-agree">I agree</button>
+        <button class="btn btn-secondary" id="consent-cancel">Cancel</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3. Camera screen -->
+  <section class="screen" id="screen-camera">
+    <button class="btn-back" id="camera-back">Back</button>
+    <h2 class="panel-title">Strike a pose</h2>
+
+    <div class="camera-frame">
+      <video id="camera-video" autoplay playsinline muted></video>
+      <img id="camera-captured" class="captured-frame" alt="Captured photo" hidden>
+      <div class="silhouette-overlay" id="camera-silhouette">
+        <svg viewBox="0 0 200 320" fill="none" stroke="#f3efe6" stroke-width="3">
+          <ellipse cx="100" cy="34" rx="26" ry="30"/>
+          <path d="M60 78 Q100 60 140 78 L150 190 Q100 210 50 190 Z"/>
+          <path d="M60 90 L20 170 M140 90 L180 170"/>
+          <path d="M65 195 L58 300 M135 195 L142 300"/>
+        </svg>
+      </div>
+      <div class="countdown-overlay" id="camera-countdown">5</div>
+    </div>
+
+    <p class="camera-tips" id="camera-tips">
+      Stand about 2 metres from the camera, face forward, with your arms
+      slightly away from your body.
+    </p>
+    <p class="camera-error" id="camera-error"></p>
+
+    <div class="btn-row" id="camera-controls-live">
+      <button class="btn btn-primary" id="camera-capture">Capture photo</button>
+    </div>
+    <div class="btn-row" id="camera-controls-review" hidden>
+      <button class="btn btn-primary" id="camera-use-photo">Use this photo</button>
+      <button class="btn btn-secondary" id="camera-retake">Retake</button>
+    </div>
+    <div class="btn-row" id="camera-controls-error" hidden>
+      <button class="btn btn-primary" id="camera-retry">Try again</button>
+      <button class="btn btn-secondary" data-go="attract">Cancel</button>
+    </div>
+  </section>
+
+  <!-- 4. Department screen -->
+  <section class="screen" id="screen-department">
+    <button class="btn-back" data-go="attract">Start over</button>
+    <h2 class="panel-title">What are you looking for?</h2>
+    <div class="choice-grid" id="department-grid"></div>
+  </section>
+
+  <!-- 5. Style screen -->
+  <section class="screen" id="screen-style">
+    <button class="btn-back" data-go="department">Back</button>
+    <h2 class="panel-title" id="style-heading">Choose a style</h2>
+    <div class="choice-grid" id="style-grid"></div>
+  </section>
+
+  <!-- 6. Fabric screen -->
+  <section class="screen screen-scroll" id="screen-fabric">
+    <button class="btn-back" data-go="style">Back</button>
+    <h2 class="panel-title" id="fabric-heading">Choose a fabric</h2>
+    <div class="fabric-grid" id="fabric-grid"></div>
+  </section>
+
+  <!-- 7. Processing screen -->
+  <section class="screen" id="screen-processing">
+    <div class="spinner"></div>
+    <div class="processing-message" id="processing-message">Preparing your preview&hellip;</div>
+    <div class="btn-row" id="processing-error-controls" hidden>
+      <button class="btn btn-primary" id="processing-retry">Retry</button>
+      <button class="btn btn-secondary" data-go="attract">Start over</button>
+    </div>
+  </section>
+
+  <!-- 8. Result screen -->
+  <section class="screen" id="screen-result">
+    <div class="result-layout">
+      <div class="result-image-frame">
+        <img id="result-image" alt="Your try-on result">
+      </div>
+      <div class="result-swatch-info">
+        <img id="result-swatch" alt="Fabric swatch">
+        <div>
+          <div class="name" id="result-fabric-name">Fabric name</div>
+          <div class="code" id="result-fabric-code">CODE</div>
+        </div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="result-another-fabric">Try another fabric</button>
+        <button class="btn btn-secondary" id="result-another-style">Try another style</button>
+        <button class="btn btn-secondary" id="result-compare">Compare</button>
+        <button class="btn btn-secondary" id="result-start-over">Start over</button>
+      </div>
+      <p class="fine-print">Visual preview only &mdash; your garment will be tailored to your measurements.</p>
+    </div>
+  </section>
+
+</div>
+
+<!-- Idle warning overlay -->
+<div class="overlay" id="overlay-idle">
+  <div class="overlay-panel">
+    <h2 class="panel-title">Are you still there?</h2>
+    <p class="body-text">Your session will end soon to keep things ready for the next guest.</p>
+    <div class="idle-countdown" id="idle-countdown">10</div>
+    <button class="btn btn-primary" id="idle-still-here">Yes, I'm still here</button>
+  </div>
+</div>
+
+<!-- Compare overlay -->
+<div class="overlay" id="overlay-compare">
+  <div class="overlay-panel overlay-panel-wide">
+    <h2 class="panel-title">Compare your recent looks</h2>
+    <div class="compare-grid" id="compare-grid"></div>
+    <div class="btn-row">
+      <button class="btn btn-primary" id="compare-close">Close</button>
+    </div>
+  </div>
+</div>
+
+<!-- Staff PIN pad overlay -->
+<div class="overlay" id="overlay-staff-pin">
+  <div class="overlay-panel">
+    <h2 class="panel-title">Staff PIN</h2>
+    <div class="pin-display" id="pin-display"></div>
+    <div class="pin-error" id="pin-error"></div>
+    <div class="pin-grid" id="pin-grid"></div>
+    <button class="btn btn-secondary" id="pin-cancel">Cancel</button>
+  </div>
+</div>
+
+<!-- Staff menu overlay -->
+<div class="overlay" id="overlay-staff-menu">
+  <div class="overlay-panel">
+    <h2 class="panel-title">Staff Menu</h2>
+    <div class="staff-menu-list">
+      <button class="btn btn-secondary" id="staff-reload-catalogue">Reload catalogue</button>
+      <button class="btn btn-secondary" id="staff-test-backend">Test backend</button>
+      <button class="btn btn-secondary" id="staff-show-error">Show last error</button>
+      <button class="btn btn-secondary" id="staff-exit-kiosk">Exit kiosk</button>
+    </div>
+    <div class="staff-status" id="staff-status" hidden></div>
+    <button class="btn btn-primary btn-mt" id="staff-menu-close">Close</button>
+  </div>
+</div>
+
+<button id="staff-trigger" aria-label="Staff access" aria-hidden="true"></button>
+<div class="demo-badge" id="demo-badge">DEMO MODE</div>
+
+<script src="config.js"></script>
+<script src="js/catalogue.js"></script>
+<script src="js/api.js"></script>
+<script src="js/camera.js"></script>
+<script src="js/idle.js"></script>
+<script src="js/staff.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
