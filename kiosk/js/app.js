@@ -441,7 +441,21 @@
   // --- 8. Result screen -------------------------------------------------
 
   function showResult(result) {
-    el("result-image").src = result.imageDataUrl;
+    // Diagnostic (2026-09-21): if a capture-time black-frame check in
+    // camera.js ever passes clean but the customer still sees a black
+    // result, these logs prove the bug is downstream of capture (payload
+    // handling, or the <img> failing to decode) rather than in capture
+    // itself - length/prefix of what we're about to display, plus
+    // naturalWidth/Height once the browser actually decodes it.
+    console.log(
+      "[Result] displaying image:",
+      `dataUrlLength=${result.imageDataUrl.length}`,
+      `prefix=${result.imageDataUrl.slice(0, 40)}`
+    );
+    const img = el("result-image");
+    img.onload = () => console.log(`[Result] image decoded OK: naturalWidth=${img.naturalWidth} naturalHeight=${img.naturalHeight}`);
+    img.onerror = () => console.error("[Result] image FAILED to decode/load - src was invalid or corrupted");
+    img.src = result.imageDataUrl;
     el("result-swatch").src = result.fabric.swatch;
     el("result-fabric-name").textContent = result.fabric.fabric_name;
     el("result-fabric-code").textContent = result.fabric.fabric_code;
