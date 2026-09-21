@@ -36,3 +36,6 @@ node_modules/
 
 # Kiosk's real config (holds KIOSK_TOKEN) - kiosk/config.example.js is the template
 kiosk/config.js
+
+.dev.vars*
+!.dev.vars.example
