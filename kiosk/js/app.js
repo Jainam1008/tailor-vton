@@ -325,8 +325,27 @@
     clearInterval(processingMessageTimer);
   }
 
+  // Same-origin catalogue image fetches need their own timeout, same as
+  // the backend calls in api.js get via fetchWithTimeout - otherwise a
+  // stalled connection here hangs the processing screen forever with no
+  // error shown, which is exactly the "stuck on loading" bug this was
+  // written to fix (2026-09-21).
+  const IMAGE_FETCH_TIMEOUT_MS = 20_000;
+
   async function fetchImageAsBase64(url) {
-    const response = await fetch(url, { cache: "force-cache" });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), IMAGE_FETCH_TIMEOUT_MS);
+    let response;
+    try {
+      response = await fetch(url, { cache: "force-cache", signal: controller.signal });
+    } catch (err) {
+      if (err.name === "AbortError") {
+        throw new Error("Loading the garment image took too long - please check your connection and try again.");
+      }
+      throw new Error(`Could not load ${url}: ${err.message}`);
+    } finally {
+      clearTimeout(timer);
+    }
     if (!response.ok) {
       throw new Error(`Could not load ${url} (HTTP ${response.status})`);
     }
@@ -349,12 +368,41 @@
     return { person_image: personBase64, garment_image: garmentBase64, category: tryonPlan };
   }
 
+  // Belt-and-braces top-level timeout: whatever might hang inside runTryOn
+  // (now or after a future change), the customer never gets stuck on the
+  // processing screen with no way out - they always land on a friendly
+  // retry message within this many seconds.
+  const PROCESSING_TIMEOUT_MS = 45_000;
+
+  function withTimeout(promise, ms, message) {
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = setTimeout(() => reject(new Error(message)), ms);
+    });
+    return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
+  }
+
+  // Incremented on every runTryOn() call so a stale attempt (e.g. one that
+  // times out client-side but is still running in the background) can
+  // never clobber the screen state of a newer retry/attempt that
+  // superseded it.
+  let tryOnGeneration = 0;
+
   async function runTryOn() {
+    const myGeneration = ++tryOnGeneration;
     startProcessingMessages();
     try {
-      const garmentBase64 = await fetchImageAsBase64(session.fabric.image);
-      const payload = buildTryOnPayload(session.personPhotoBase64, garmentBase64, session.fabric.tryon_plan);
-      const result = await Api.tryOn(payload);
+      const work = (async () => {
+        const garmentBase64 = await fetchImageAsBase64(session.fabric.image);
+        const payload = buildTryOnPayload(session.personPhotoBase64, garmentBase64, session.fabric.tryon_plan);
+        return Api.tryOn(payload);
+      })();
+      const result = await withTimeout(
+        work,
+        PROCESSING_TIMEOUT_MS,
+        "This is taking longer than expected - please try again."
+      );
+      if (myGeneration !== tryOnGeneration) return; // superseded by a newer attempt
 
       stopProcessingMessages();
       const imageDataUrl = `data:image/jpeg;base64,${result.result_image}`;
@@ -366,6 +414,7 @@
       showResult(session.currentResult);
       goToScreen("result");
     } catch (err) {
+      if (myGeneration !== tryOnGeneration) return;
       stopProcessingMessages();
       recordError("try-on", err);
       el("processing-message").textContent = err.message || "Something went wrong generating your preview.";
