@@ -57,6 +57,17 @@ const Camera = (() => {
    * prefix, ready to send straight to the backend.
    */
   function capture(videoEl) {
+    // If the video element hasn't actually decoded a frame yet (videoWidth/
+    // videoHeight are 0), drawImage below silently draws nothing rather
+    // than throwing - the canvas is left in its default transparent state,
+    // which toDataURL("image/jpeg", ...) then flattens to solid opaque
+    // BLACK (JPEG has no alpha channel). That produced a "successful"
+    // capture that was actually a black photo, with no error anywhere
+    // (2026-09-21). Guard against it explicitly instead.
+    if (!videoEl.videoWidth || !videoEl.videoHeight || videoEl.readyState < 2) {
+      throw new Error("The camera isn't ready yet - please wait a moment and try again.");
+    }
+
     const videoWidth = videoEl.videoWidth;
     const videoHeight = videoEl.videoHeight;
     const targetAspect = TARGET_WIDTH / TARGET_HEIGHT;

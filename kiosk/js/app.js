@@ -193,11 +193,22 @@
   });
 
   function doCapture() {
-    const { dataUrl, base64 } = Camera.capture(el("camera-video"));
-    session.personPhotoDataUrl = dataUrl;
-    session.personPhotoBase64 = base64;
-    el("camera-captured").src = dataUrl;
-    setCameraState("review");
+    // Was previously unguarded: if Camera.capture() failed (e.g. the video
+    // wasn't actually ready), the exception vanished silently and the
+    // customer never saw an error - see the camera.js comment for what
+    // that looked like from their side (a black "result"). Route any
+    // capture failure to the same error UI camera-start failures use.
+    try {
+      const { dataUrl, base64 } = Camera.capture(el("camera-video"));
+      session.personPhotoDataUrl = dataUrl;
+      session.personPhotoBase64 = base64;
+      el("camera-captured").src = dataUrl;
+      setCameraState("review");
+    } catch (err) {
+      recordError("camera capture", err);
+      el("camera-error").textContent = err.message || "Could not capture a photo - please try again.";
+      setCameraState("error");
+    }
   }
 
   el("camera-use-photo").addEventListener("click", () => {
