@@ -167,6 +167,90 @@ const Camera = (() => {
   }
 
   /**
+   * Center-crops `source` (a <video> or <img>/HTMLImageElement, both work
+   * with drawImage) to a 2:3 portrait rectangle matching TARGET_WIDTH x
+   * TARGET_HEIGHT, optionally mirrored. Shared by capture() (live camera -
+   * mirrored, to match the mirrored live preview the customer saw) and
+   * processImageFile() (a gallery photo - never mirrored, since there's no
+   * "preview" to match and flipping someone's existing photo would be
+   * visibly wrong, e.g. anything asymmetric in it).
+   */
+  function cropToCanvas(source, sourceWidth, sourceHeight, mirror) {
+    const targetAspect = TARGET_WIDTH / TARGET_HEIGHT;
+    const sourceAspect = sourceWidth / sourceHeight;
+
+    let cropWidth = sourceWidth;
+    let cropHeight = sourceHeight;
+    if (sourceAspect > targetAspect) {
+      cropWidth = sourceHeight * targetAspect;
+    } else {
+      cropHeight = sourceWidth / targetAspect;
+    }
+    const cropX = (sourceWidth - cropWidth) / 2;
+    const cropY = (sourceHeight - cropHeight) / 2;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = TARGET_WIDTH;
+    canvas.height = TARGET_HEIGHT;
+    const ctx = canvas.getContext("2d");
+    if (mirror) {
+      ctx.translate(TARGET_WIDTH, 0);
+      ctx.scale(-1, 1);
+    }
+    ctx.drawImage(source, cropX, cropY, cropWidth, cropHeight, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+    return { canvas, ctx, cropWidth, cropHeight, cropX, cropY };
+  }
+
+  /**
+   * Lets a customer pick an existing photo instead of using the live
+   * camera - useful as a fallback if the camera is misbehaving, and for
+   * anyone using their own phone/laptop rather than the physical kiosk.
+   * Returns the same { dataUrl, base64 } shape as capture(). Uses
+   * createObjectURL rather than FileReader - avoids base64-encoding a
+   * potentially large gallery photo twice (once to load it, once for our
+   * own resized output).
+   */
+  function processImageFile(file) {
+    return new Promise((resolve, reject) => {
+      if (!file || !file.type.startsWith("image/")) {
+        reject(new Error("Please choose an image file."));
+        return;
+      }
+      const objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        try {
+          const { canvas } = cropToCanvas(img, img.naturalWidth, img.naturalHeight, false);
+          const dataUrl = canvas.toDataURL("image/jpeg", 0.9);
+          const base64 = dataUrl.split(",")[1];
+          console.log(
+            "[Camera] processImageFile: loaded",
+            `${img.naturalWidth}x${img.naturalHeight}`,
+            `type=${file.type}`,
+            `size=${file.size}`
+          );
+          resolve({ dataUrl, base64 });
+        } catch (err) {
+          reject(new Error("Could not process that image - please try a different one."));
+        }
+      };
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        // The most common real-world cause: recent iPhones save photos as
+        // HEIC by default, which Chrome (unlike Safari) cannot decode in
+        // an <img> - worth naming explicitly rather than a generic error.
+        reject(
+          new Error(
+            "Could not open that image - it may be an unsupported format (e.g. HEIC). Please try a JPEG or PNG."
+          )
+        );
+      };
+      img.src = objectUrl;
+    });
+  }
+
+  /**
    * Captures the current video frame, center-crops it to a 2:3 portrait
    * rectangle (matching what the customer sees framed on screen regardless
    * of the camera's native aspect ratio), then downsizes to ~768x1152.
@@ -207,32 +291,12 @@ const Camera = (() => {
 
     const videoWidth = videoEl.videoWidth;
     const videoHeight = videoEl.videoHeight;
-    const targetAspect = TARGET_WIDTH / TARGET_HEIGHT;
-    const sourceAspect = videoWidth / videoHeight;
-
-    let cropWidth = videoWidth;
-    let cropHeight = videoHeight;
-    if (sourceAspect > targetAspect) {
-      cropWidth = videoHeight * targetAspect;
-    } else {
-      cropHeight = videoWidth / targetAspect;
-    }
-    const cropX = (videoWidth - cropWidth) / 2;
-    const cropY = (videoHeight - cropHeight) / 2;
 
     // Canvas dimensions are fixed constants (not derived from any DOM
-    // element's size) and are set before drawImage runs - setting
-    // canvas.width/height AFTER drawing would reset/clear the canvas, so
-    // order matters here and is deliberate.
-    const canvas = document.createElement("canvas");
-    canvas.width = TARGET_WIDTH;
-    canvas.height = TARGET_HEIGHT;
-    const ctx = canvas.getContext("2d");
-
-    // Mirror horizontally to match the mirrored live preview the customer saw.
-    ctx.translate(TARGET_WIDTH, 0);
-    ctx.scale(-1, 1);
-    ctx.drawImage(videoEl, cropX, cropY, cropWidth, cropHeight, 0, 0, TARGET_WIDTH, TARGET_HEIGHT);
+    // element's size); mirrored to match the mirrored live preview the
+    // customer saw (see cropToCanvas's comment for why gallery photos
+    // don't get this).
+    const { canvas, ctx, cropWidth, cropHeight, cropX, cropY } = cropToCanvas(videoEl, videoWidth, videoHeight, true);
 
     // Sample a spread-out grid (not just the center - a real photo can
     // legitimately have a black pixel at any single point, e.g. dark hair
@@ -268,5 +332,5 @@ const Camera = (() => {
     return { dataUrl, base64 };
   }
 
-  return { start, stop, capture, isHealthy };
+  return { start, stop, capture, isHealthy, processImageFile };
 })();

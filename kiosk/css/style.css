@@ -197,6 +197,25 @@ button {
   font-size: 1rem;
 }
 
+/* A lower-priority secondary action, styled as a plain text link rather
+   than a full button - still meets the 80px touch-target minimum via
+   padding, it just doesn't look as visually heavy as .btn. */
+.btn-link {
+  min-height: var(--touch-min);
+  padding: var(--space-sm) var(--space-md);
+  margin-top: var(--space-sm);
+  background: none;
+  border: none;
+  color: var(--color-cream-dim);
+  font-size: 0.95rem;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.btn-link:hover {
+  color: var(--color-gold-bright);
+}
+
 /* --------------------------------------------------------------------------
    Branding / header
    -------------------------------------------------------------------------- */

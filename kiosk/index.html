@@ -37,10 +37,11 @@
     <div class="panel">
       <h2 class="panel-title">Before we take your photo</h2>
       <p class="body-text">
-        We'll use your camera to take one photo so you can preview how a
-        fabric and garment would look on you. That photo is used only to
-        create this preview - it is never saved to a device or server, and
-        it is permanently erased the moment your session ends.
+        We'll use your camera to take one photo (or you can choose an
+        existing one) so you can preview how a fabric and garment would
+        look on you. That photo is used only to create this preview - it
+        is never saved to a device or server, and it is permanently
+        erased the moment your session ends.
       </p>
       <div class="btn-row">
         <button class="btn btn-primary" id="consent-agree">I agree</button>
@@ -85,6 +86,9 @@
       <button class="btn btn-primary" id="camera-retry">Try again</button>
       <button class="btn btn-secondary" data-go="attract">Cancel</button>
     </div>
+
+    <button class="btn-link" id="camera-choose-gallery">Or choose a photo from this device</button>
+    <input type="file" id="gallery-file-input" accept="image/*" hidden>
   </section>
 
   <!-- 4. Department screen -->

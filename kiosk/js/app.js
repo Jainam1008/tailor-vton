@@ -154,6 +154,10 @@
     el("camera-video").hidden = state === "review";
     el("camera-captured").hidden = state !== "review";
     el("camera-silhouette").hidden = state !== "live";
+    // Available as a fallback whenever there isn't already a photo picked
+    // (not "review" - a customer with a photo in hand uses Retake/Use
+    // this photo instead).
+    el("camera-choose-gallery").hidden = state === "review";
   }
 
   async function startCameraFlow() {
@@ -267,6 +271,13 @@
     }, 1000);
   });
 
+  function acceptPhoto(dataUrl, base64) {
+    session.personPhotoDataUrl = dataUrl;
+    session.personPhotoBase64 = base64;
+    el("camera-captured").src = dataUrl;
+    setCameraState("review");
+  }
+
   function doCapture() {
     // Was previously unguarded: if Camera.capture() failed (e.g. the video
     // wasn't actually ready), the exception vanished silently and the
@@ -275,16 +286,37 @@
     // capture failure to the same error UI camera-start failures use.
     try {
       const { dataUrl, base64 } = Camera.capture(el("camera-video"));
-      session.personPhotoDataUrl = dataUrl;
-      session.personPhotoBase64 = base64;
-      el("camera-captured").src = dataUrl;
-      setCameraState("review");
+      acceptPhoto(dataUrl, base64);
     } catch (err) {
       recordError("camera capture", err);
       el("camera-error").textContent = err.message || "Could not capture a photo - please try again.";
       setCameraState("error");
     }
   }
+
+  el("camera-choose-gallery").addEventListener("click", () => {
+    el("gallery-file-input").click();
+  });
+
+  el("gallery-file-input").addEventListener("change", async (event) => {
+    const file = event.target.files[0];
+    event.target.value = ""; // reset so picking the exact same file again still fires "change"
+    if (!file) return;
+    try {
+      const { dataUrl, base64 } = await Camera.processImageFile(file);
+      // A gallery photo doesn't need the live stream - stop it (releases
+      // the camera hardware/indicator light) rather than leaving it
+      // running unused. Retake below restarts it fresh if needed.
+      Camera.stop();
+      stopCameraWatchdog();
+      clearInterval(countdownTimer);
+      acceptPhoto(dataUrl, base64);
+    } catch (err) {
+      recordError("gallery photo", err);
+      el("camera-error").textContent = err.message;
+      setCameraState("error");
+    }
+  });
 
   el("camera-use-photo").addEventListener("click", () => {
     Camera.stop();
@@ -296,7 +328,12 @@
   el("camera-retake").addEventListener("click", () => {
     session.personPhotoBase64 = null;
     session.personPhotoDataUrl = null;
-    setCameraState("live");
+    // Always restart the camera fresh here rather than assuming a live
+    // stream is still running - handles both "the last photo came from
+    // the gallery, not the camera" and "the stream went stale while this
+    // screen sat idle" in one place instead of tracking which case we're
+    // in.
+    startCameraFlow();
   });
 
   // --- 4. Department screen ---------------------------------------------
