@@ -159,12 +159,42 @@
   async function startCameraFlow() {
     setCameraState("live");
     try {
-      await Camera.start(el("camera-video"));
+      await Camera.start(el("camera-video"), handleStreamEndedUnexpectedly);
     } catch (err) {
       recordError("camera start", err);
       el("camera-error").textContent = err.message;
       setCameraState("error");
     }
+  }
+
+  let streamRecoveryInFlight = false;
+
+  /**
+   * Fired when the camera track ends on its own mid-session (confirmed in
+   * the field: real webcam driver/OS power management, not anything the
+   * page does - see the comment on Camera.start's onStreamEnded param).
+   * Silently re-acquires the stream rather than making the customer hunt
+   * for a "Try again" button - only falls back to the visible error
+   * screen if the automatic reconnect itself fails.
+   */
+  function handleStreamEndedUnexpectedly() {
+    if (currentScreenName !== "camera" || streamRecoveryInFlight) return;
+    streamRecoveryInFlight = true;
+    clearInterval(countdownTimer);
+    el("camera-countdown").parentElement.classList.remove("is-active");
+    console.warn("[Camera] attempting automatic silent stream recovery...");
+    Camera.start(el("camera-video"), handleStreamEndedUnexpectedly)
+      .then(() => {
+        streamRecoveryInFlight = false;
+        console.warn("[Camera] automatic recovery succeeded");
+        setCameraState("live");
+      })
+      .catch((err) => {
+        streamRecoveryInFlight = false;
+        recordError("camera auto-recovery", err);
+        el("camera-error").textContent = "The camera disconnected and couldn't reconnect automatically - please try again.";
+        setCameraState("error");
+      });
   }
 
   el("camera-retry").addEventListener("click", startCameraFlow);

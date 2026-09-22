@@ -24,19 +24,32 @@ const Camera = (() => {
     }
   }
 
+  // A real camera frame is never this small - anything under this on
+  // either axis is treated as a degenerate/transitional frame, not a real
+  // one. Caught in testing (2026-09-22): a stream re-acquired immediately
+  // after the previous one ended can briefly report readyState>=2 with
+  // videoWidth/videoHeight of just a couple of pixels before settling to
+  // its real resolution - a plain ">0" check let that through as "ready".
+  const MIN_REAL_FRAME_DIMENSION = 32;
+
   /**
    * Resolves once the video element has genuinely decoded a real frame
-   * (readyState >= HAVE_CURRENT_DATA, non-zero dimensions) - not just once
-   * play() has resolved, which on some browsers/devices happens slightly
-   * before real frame data is actually available. Polls via
-   * requestAnimationFrame rather than a fixed delay, so it's as fast as
-   * the device allows but never proceeds on a still-black video.
+   * (readyState >= HAVE_CURRENT_DATA, dimensions large enough to be real
+   * video and not a transitional/degenerate frame) - not just once play()
+   * has resolved, which on some browsers/devices happens slightly before
+   * real frame data is actually available. Polls via requestAnimationFrame
+   * rather than a fixed delay, so it's as fast as the device allows but
+   * never proceeds on a still-black or degenerate video.
    */
   function waitUntilFrameReady(videoEl, timeoutMs = 8000) {
     return new Promise((resolve, reject) => {
       const start = performance.now();
       function check() {
-        if (videoEl.readyState >= 2 && videoEl.videoWidth > 0 && videoEl.videoHeight > 0) {
+        if (
+          videoEl.readyState >= 2 &&
+          videoEl.videoWidth >= MIN_REAL_FRAME_DIMENSION &&
+          videoEl.videoHeight >= MIN_REAL_FRAME_DIMENSION
+        ) {
           console.log(
             `[Camera] frame ready after ${(performance.now() - start).toFixed(0)}ms:`,
             `videoWidth=${videoEl.videoWidth} videoHeight=${videoEl.videoHeight} readyState=${videoEl.readyState}`
@@ -59,30 +72,77 @@ const Camera = (() => {
     });
   }
 
-  async function start(videoEl) {
+  function delay(ms) {
+    return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * @param videoEl the <video> element to attach the stream to
+   * @param onStreamEnded optional callback fired if the underlying camera
+   *   track ends on its own after a successful start - confirmed
+   *   happening in the field (2026-09-22 field report): a real webcam's
+   *   track can end mid-session with nothing else using the camera and no
+   *   error from getUserMedia, most likely Windows/driver-level power
+   *   management (USB selective suspend or similar) rather than anything
+   *   the page did. Not something JS can prevent, but retrying
+   *   getUserMedia recovers it in under a second - so the caller uses
+   *   this to auto-recover instead of leaving the customer stuck.
+   */
+  async function start(videoEl, onStreamEnded) {
     stop(); // in case a previous stream is still open
-    try {
-      stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 1080 },
-          height: { ideal: 1920 },
-        },
-        audio: false,
-      });
-    } catch (err) {
-      throw new Error(describeError(err));
-    }
-    videoEl.srcObject = stream;
-    await videoEl.play();
-    // Don't consider the camera "live" (and don't let the customer see a
-    // Capture button) until a real frame has actually decoded - see
-    // waitUntilFrameReady's comment for why play() resolving isn't enough
-    // on its own.
-    try {
-      await waitUntilFrameReady(videoEl);
-    } catch (err) {
-      throw new Error("The camera started but never produced a picture - please try again.");
+
+    // Retries only the "stream came up but never produced a real frame"
+    // case - e.g. a device caught mid-reconnect briefly reporting a
+    // degenerate frame (see MIN_REAL_FRAME_DIMENSION). A genuine
+    // getUserMedia error (permission denied, no camera, etc.) below fails
+    // immediately instead - retrying that wouldn't help and would just
+    // delay showing the customer the real reason.
+    const MAX_ATTEMPTS = 3;
+    for (let attempt = 1; attempt <= MAX_ATTEMPTS; attempt++) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: "user",
+            width: { ideal: 1080 },
+            height: { ideal: 1920 },
+          },
+          audio: false,
+        });
+      } catch (err) {
+        throw new Error(describeError(err));
+      }
+
+      videoEl.srcObject = stream;
+      await videoEl.play();
+
+      // Don't consider the camera "live" (and don't let the customer see a
+      // Capture button) until a real frame has actually decoded - see
+      // waitUntilFrameReady's comment for why play() resolving isn't
+      // enough on its own.
+      try {
+        await waitUntilFrameReady(videoEl);
+      } catch (err) {
+        console.warn(`[Camera] attempt ${attempt}/${MAX_ATTEMPTS} produced no usable frame - ${err.message}`);
+        stop(); // tear down the degenerate stream before retrying
+        if (attempt < MAX_ATTEMPTS) {
+          await delay(400);
+          continue;
+        }
+        throw new Error("The camera started but never produced a picture - please try again.");
+      }
+
+      if (onStreamEnded) {
+        const track = stream.getVideoTracks()[0];
+        track.addEventListener(
+          "ended",
+          () => {
+            console.warn("[Camera] track ended on its own (not stopped by the page) - notifying caller");
+            onStreamEnded();
+          },
+          { once: true }
+        );
+      }
+      return;
     }
   }
 
