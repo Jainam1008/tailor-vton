@@ -245,6 +245,7 @@ def approve(fabric_code: str, style_id: str, variant_filename: str, fabric_name:
             "image": f"catalogue/images/{item_id}.jpg",
             "swatch": f"catalogue/images/swatches/{fabric_code}.jpg",
             "tryon_plan": style["tryon_plan"],
+            "enabled": style.get("enabled", True),
         }
     )
     save_catalogue(catalogue)
@@ -339,6 +340,7 @@ def _publish_if_complete(fabric_code: str, style_id: str, fabric_name: str) -> N
             "images": images,
             "swatch": f"catalogue/images/swatches/{fabric_code}.jpg",
             "tryon_plan": style["tryon_plan"],
+            "enabled": style.get("enabled", True),
         }
     )
     save_catalogue(catalogue)

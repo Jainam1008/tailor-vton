@@ -61,6 +61,26 @@
 #                     exactly this, with a combined two-piece-suit photo
 #                     used for both passes). Take a separate clean photo of
 #                     each individual piece instead.
+#
+#                     UPDATE 2026-09-22: even with separate clean photos per
+#                     piece, running two tryon_plan passes sequentially is
+#                     still unreliable - whichever pass runs SECOND (an
+#                     overlay on an image the model has already modified
+#                     once) can lose its category's correct shape: with
+#                     [bottoms, tops] the jacket sometimes loses its sleeves
+#                     (renders short-sleeved); reordered to [tops, bottoms]
+#                     the trousers sometimes render as a skirt instead of
+#                     separate legs. Neither order is reliable yet - see
+#                     `enabled` below. This looks like a maskless
+#                     segmentation-free limitation of sequential multi-pass
+#                     compositing itself, not a catalogue-image quality
+#                     issue - prompt changes alone didn't fix it.
+# enabled           - optional, defaults to true. Set to false to keep a
+#                     style out of the live kiosk (hidden from customers)
+#                     while still letting generate.py/review.py produce and
+#                     approve its catalogue images normally - useful for a
+#                     style with a known quality problem, like the
+#                     multi-piece sequential-pass issue above.
 # ---------------------------------------------------------------------------
 
 # Which fal.ai image-editing model generates each department's images, and
@@ -84,6 +104,10 @@ styles:
     department: suiting
     fabric_prefixes: [SU]
     tryon_plan: [bottoms, tops]
+    # Disabled 2026-09-22: sequential 2-pass compositing is unreliable for
+    # this style regardless of pass order (see the UPDATE note above `pieces`
+    # near the top of this file). Re-enable once a reliable approach is found.
+    enabled: false
     pieces:
       tops:
         template: catalogue/templates/two_piece_suit_jacket.jpg
@@ -92,10 +116,7 @@ styles:
           jacket with notch lapels, a standard button closure, welt chest
           pocket and flap side pockets - keeping the identical cut, lapel
           shape, buttons and overall silhouette. Remake it entirely in the
-          fabric shown in the second (swatch) image: preserve that fabric's
-          true colour, weave texture and pattern scale exactly as it
-          appears in the swatch, do not substitute a different colour or
-          pattern. Photograph it against a plain light-grey studio
+          fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey studio
           background, front view, full garment visible, no person, no
           mannequin head. Show only the jacket - no trousers, no other
           garment.
@@ -105,10 +126,7 @@ styles:
           Recreate this exact template garment - flat-front suit trousers
           with a straight leg and matching waistband - keeping the
           identical cut and overall silhouette. Remake it entirely in the
-          fabric shown in the second (swatch) image: preserve that fabric's
-          true colour, weave texture and pattern scale exactly as it
-          appears in the swatch, do not substitute a different colour or
-          pattern. Photograph it against a plain light-grey studio
+          fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey studio
           background, front view, full garment visible, no person, no
           mannequin head. Show only the trousers - no jacket, no other
           garment.
@@ -118,6 +136,9 @@ styles:
     department: suiting
     fabric_prefixes: [SU]
     tryon_plan: [bottoms, tops]
+    # Disabled 2026-09-22: same sequential 2-pass reliability issue as
+    # two_piece_suit above - not yet generated, kept disabled by default.
+    enabled: false
     pieces:
       tops:
         template: catalogue/templates/three_piece_suit_jacket_waistcoat.jpg
@@ -127,9 +148,7 @@ styles:
           with a V-neck opening and five buttons - keeping the identical
           cut, lapel shape, buttons and overall silhouette of both pieces.
           Remake it entirely in the fabric shown in the second (swatch)
-          image: preserve that fabric's true colour, weave texture and
-          pattern scale exactly as it appears in the swatch, do not
-          substitute a different colour or pattern. Photograph it against a
+          image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a
           plain light-grey studio background, front view, full garment
           visible, no person, no mannequin head. Show only the jacket and
           waistcoat - no trousers, no other garment.
@@ -139,10 +158,7 @@ styles:
           Recreate this exact template garment - flat-front suit trousers
           with a straight leg and matching waistband - keeping the
           identical cut and overall silhouette. Remake it entirely in the
-          fabric shown in the second (swatch) image: preserve that fabric's
-          true colour, weave texture and pattern scale exactly as it
-          appears in the swatch, do not substitute a different colour or
-          pattern. Photograph it against a plain light-grey studio
+          fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey studio
           background, front view, full garment visible, no person, no
           mannequin head. Show only the trousers - no jacket, no other
           garment.
@@ -158,9 +174,7 @@ styles:
       notch lapels, a two-button closure, welt chest pocket and flap side
       pockets - keeping the identical cut, lapel shape, buttons and overall
       silhouette. Remake it entirely in the fabric shown in the second
-      (swatch) image: preserve that fabric's true colour, weave texture and
-      pattern scale exactly as it appears in the swatch, do not substitute a
-      different colour or pattern. Photograph it against a plain light-grey
+      (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey
       studio background, front view, full garment visible, no person, no
       mannequin head.
 
@@ -175,9 +189,7 @@ styles:
       a classic spread collar, a full button placket down the front and
       buttoned barrel cuffs - keeping the identical cut, collar shape,
       buttons and overall silhouette. Remake it entirely in the fabric shown
-      in the second (swatch) image: preserve that fabric's true colour,
-      weave texture and pattern scale exactly as it appears in the swatch,
-      do not substitute a different colour or pattern. Photograph it against
+      in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against
       a plain light-grey studio background, front view, full garment
       visible, no person, no mannequin head.
 
@@ -192,9 +204,7 @@ styles:
       mandarin (band) collar, a full button placket down the front and
       buttoned barrel cuffs - keeping the identical cut, collar shape,
       buttons and overall silhouette. Remake it entirely in the fabric shown
-      in the second (swatch) image: preserve that fabric's true colour,
-      weave texture and pattern scale exactly as it appears in the swatch,
-      do not substitute a different colour or pattern. Photograph it against
+      in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against
       a plain light-grey studio background, front view, full garment
       visible, no person, no mannequin head.
 
@@ -209,9 +219,7 @@ styles:
       around knee length, with a short mandarin/band collar, a button
       placket at the neck and long sleeves - keeping the identical cut,
       collar shape, buttons and overall silhouette. Remake it entirely in
-      the fabric shown in the second (swatch) image: preserve that fabric's
-      true colour, weave texture and pattern scale exactly as it appears in
-      the swatch, do not substitute a different colour or pattern.
+      the fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern.
       Photograph it against a plain light-grey studio background, front
       view, full garment visible, no person, no mannequin head.
 
@@ -226,9 +234,7 @@ styles:
       coat with a mandarin collar, a full button-front closure down the
       centre and a fitted silhouette - keeping the identical cut, collar
       shape, buttons and overall silhouette. Remake it entirely in the
-      fabric shown in the second (swatch) image: preserve that fabric's true
-      colour, weave texture and pattern scale exactly as it appears in the
-      swatch, do not substitute a different colour or pattern. Photograph it
+      fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it
       against a plain light-grey studio background, front view, full
       garment visible, no person, no mannequin head.
 
@@ -244,9 +250,7 @@ styles:
       concealed or top-fastened button placket closed to the neck - keeping
       the identical cut, collar shape, buttons and overall silhouette.
       Remake it entirely in the fabric shown in the second (swatch) image:
-      preserve that fabric's true colour, weave texture and pattern scale
-      exactly as it appears in the swatch, do not substitute a different
-      colour or pattern. Photograph it against a plain light-grey studio
+      reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey studio
       background, front view, full garment visible, no person, no mannequin
       head.
 
@@ -261,8 +265,5 @@ styles:
       Nehru jacket falling to around hip length, with a mandarin collar and
       a straight button-front closure to the neck - keeping the identical
       cut, collar shape, buttons and overall silhouette. Remake it entirely
-      in the fabric shown in the second (swatch) image: preserve that
-      fabric's true colour, weave texture and pattern scale exactly as it
-      appears in the swatch, do not substitute a different colour or
-      pattern. Photograph it against a plain light-grey studio background,
+      in the fabric shown in the second (swatch) image: reproduce that fabric's exact colour and shade as shown in the swatch - do not lighten a dark fabric, and do not add a check, plaid, windowpane or diamond pattern unless the swatch itself clearly shows one; if the swatch is a plain solid colour, render a plain solid colour with only its natural weave texture, no invented pattern. Photograph it against a plain light-grey studio background,
       front view, full garment visible, no person, no mannequin head.

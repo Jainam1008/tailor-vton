@@ -15,58 +15,8 @@
       "tryon_plan": [
         "bottoms",
         "tops"
-      ]
-    },
-    {
-      "id": "SU-02__two_piece_suit",
-      "fabric_code": "SU-02",
-      "fabric_name": "SU-02",
-      "department": "suiting",
-      "style_id": "two_piece_suit",
-      "style_name": "Two-Piece Suit",
-      "images": {
-        "tops": "catalogue/images/SU-02__two_piece_suit__tops.jpg",
-        "bottoms": "catalogue/images/SU-02__two_piece_suit__bottoms.jpg"
-      },
-      "swatch": "catalogue/images/swatches/SU-02.jpg",
-      "tryon_plan": [
-        "bottoms",
-        "tops"
-      ]
-    },
-    {
-      "id": "Su-03__two_piece_suit",
-      "fabric_code": "Su-03",
-      "fabric_name": "Su-03",
-      "department": "suiting",
-      "style_id": "two_piece_suit",
-      "style_name": "Two-Piece Suit",
-      "images": {
-        "tops": "catalogue/images/Su-03__two_piece_suit__tops.jpg",
-        "bottoms": "catalogue/images/Su-03__two_piece_suit__bottoms.jpg"
-      },
-      "swatch": "catalogue/images/swatches/Su-03.jpg",
-      "tryon_plan": [
-        "bottoms",
-        "tops"
-      ]
-    },
-    {
-      "id": "SU-04__two_piece_suit",
-      "fabric_code": "SU-04",
-      "fabric_name": "SU-04",
-      "department": "suiting",
-      "style_id": "two_piece_suit",
-      "style_name": "Two-Piece Suit",
-      "images": {
-        "tops": "catalogue/images/SU-04__two_piece_suit__tops.jpg",
-        "bottoms": "catalogue/images/SU-04__two_piece_suit__bottoms.jpg"
-      },
-      "swatch": "catalogue/images/swatches/SU-04.jpg",
-      "tryon_plan": [
-        "bottoms",
-        "tops"
-      ]
+      ],
+      "enabled": false
     },
     {
       "id": "SU-05__two_piece_suit",
@@ -83,7 +33,62 @@
       "tryon_plan": [
         "bottoms",
         "tops"
-      ]
+      ],
+      "enabled": false
+    },
+    {
+      "id": "SU-02__two_piece_suit",
+      "fabric_code": "SU-02",
+      "fabric_name": "SU-02",
+      "department": "suiting",
+      "style_id": "two_piece_suit",
+      "style_name": "Two-Piece Suit",
+      "images": {
+        "tops": "catalogue/images/SU-02__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-02__two_piece_suit__bottoms.jpg"
+      },
+      "swatch": "catalogue/images/swatches/SU-02.jpg",
+      "tryon_plan": [
+        "bottoms",
+        "tops"
+      ],
+      "enabled": false
+    },
+    {
+      "id": "Su-03__two_piece_suit",
+      "fabric_code": "Su-03",
+      "fabric_name": "Su-03",
+      "department": "suiting",
+      "style_id": "two_piece_suit",
+      "style_name": "Two-Piece Suit",
+      "images": {
+        "tops": "catalogue/images/Su-03__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/Su-03__two_piece_suit__bottoms.jpg"
+      },
+      "swatch": "catalogue/images/swatches/Su-03.jpg",
+      "tryon_plan": [
+        "bottoms",
+        "tops"
+      ],
+      "enabled": false
+    },
+    {
+      "id": "SU-04__two_piece_suit",
+      "fabric_code": "SU-04",
+      "fabric_name": "SU-04",
+      "department": "suiting",
+      "style_id": "two_piece_suit",
+      "style_name": "Two-Piece Suit",
+      "images": {
+        "tops": "catalogue/images/SU-04__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-04__two_piece_suit__bottoms.jpg"
+      },
+      "swatch": "catalogue/images/swatches/SU-04.jpg",
+      "tryon_plan": [
+        "bottoms",
+        "tops"
+      ],
+      "enabled": false
     }
   ]
 }

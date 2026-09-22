@@ -23,7 +23,11 @@ const Catalogue = (() => {
       throw new Error(`catalogue.json request failed: HTTP ${response.status}`);
     }
     const data = await response.json();
-    items = Array.isArray(data.items) ? data.items : [];
+    const allItems = Array.isArray(data.items) ? data.items : [];
+    // A style can be published but marked enabled:false in catalogue.json
+    // (see config.yaml's `enabled` field) - e.g. while a known quality
+    // issue is being investigated. Missing the field means enabled.
+    items = allItems.filter((item) => item.enabled !== false);
     return items;
   }
 
