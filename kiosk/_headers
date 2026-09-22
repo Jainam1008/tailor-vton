@@ -15,12 +15,16 @@
 # plus the two external hosts actually used - Google Fonts (style.css
 # @imports its stylesheet from fonts.googleapis.com, which serves the
 # actual font files from fonts.gstatic.com) and the Modal backend
-# (connect-src, for the /warmup and /tryon fetch calls). Result images are
-# data: URIs (img-src data:), never fetched from a URL.
+# (connect-src, for the /warmup and /tryon fetch calls). img-src also
+# needs data: (captured/result photos as data: URIs) and blob: (the
+# "choose a photo from this device" gallery picker loads the chosen file
+# via URL.createObjectURL, which is a blob: URL - without this, the CSP
+# silently blocks it and it looks exactly like an "unsupported format"
+# error, even for a perfectly normal JPEG - caught 2026-09-22).
 
 /*
   Permissions-Policy: camera=(self), microphone=(), geolocation=(), fullscreen=(self)
-  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://jainam-7701--tailor-vton-backend-vtonmodel-web.modal.run; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none';
+  Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data: blob:; connect-src 'self' https://jainam-7701--tailor-vton-backend-vtonmodel-web.modal.run; base-uri 'self'; form-action 'self'; object-src 'none'; frame-ancestors 'none';
   X-Frame-Options: DENY
   X-Content-Type-Options: nosniff
   Referrer-Policy: strict-origin-when-cross-origin
