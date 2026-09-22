@@ -483,14 +483,30 @@
     });
   }
 
-  function buildTryOnPayload(personBase64, garmentBase64, tryonPlan) {
+  // A catalogue item is either single-piece (item.image, one string) or
+  // multi-piece (item.images, {category: url} - e.g. a two-piece suit's
+  // {tops, bottoms}). Multi-piece items need one clean reference photo
+  // PER category, not one combined outfit photo reused for every pass -
+  // a maskless pass can't tell "just the trousers" apart from a jacket
+  // in the same frame (confirmed in testing, 2026-09-22).
+  async function loadGarmentImages(fabricItem) {
+    if (fabricItem.images) {
+      const entries = await Promise.all(
+        Object.entries(fabricItem.images).map(async ([category, url]) => [category, await fetchImageAsBase64(url)])
+      );
+      return Object.fromEntries(entries);
+    }
+    return { single: await fetchImageAsBase64(fabricItem.image) };
+  }
+
+  function buildTryOnPayload(personBase64, garmentImages, tryonPlan) {
     if (Array.isArray(tryonPlan)) {
       return {
         person_image: personBase64,
-        passes: tryonPlan.map((category) => ({ garment_image: garmentBase64, category })),
+        passes: tryonPlan.map((category) => ({ garment_image: garmentImages[category], category })),
       };
     }
-    return { person_image: personBase64, garment_image: garmentBase64, category: tryonPlan };
+    return { person_image: personBase64, garment_image: garmentImages.single, category: tryonPlan };
   }
 
   // Belt-and-braces top-level timeout: whatever might hang inside runTryOn
@@ -518,8 +534,8 @@
     startProcessingMessages();
     try {
       const work = (async () => {
-        const garmentBase64 = await fetchImageAsBase64(session.fabric.image);
-        const payload = buildTryOnPayload(session.personPhotoBase64, garmentBase64, session.fabric.tryon_plan);
+        const garmentImages = await loadGarmentImages(session.fabric);
+        const payload = buildTryOnPayload(session.personPhotoBase64, garmentImages, session.fabric.tryon_plan);
         return Api.tryOn(payload);
       })();
       const result = await withTimeout(

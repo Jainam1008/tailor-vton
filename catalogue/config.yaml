@@ -29,24 +29,38 @@
 #                     fabric_prefixes: [SU] only ever gets matched against
 #                     fabrics named SU-*.
 # template          - path (relative to the repo root) to that one clean
-#                     reference photo of the garment.
-# tryon_plan        - how the KIOSK should apply this style's catalogue
-#                     image during a live try-on (Stage 2, backend/). Either
-#                     a single category ("tops", "bottoms", or "one-pieces"),
-#                     or a list of categories run as separate passes on the
-#                     SAME catalogue image, e.g. [bottoms, tops] for a suit -
-#                     the backend's /tryon endpoint applies the lower-body
-#                     pass first, then the upper-body pass, both using this
-#                     one generated image. This does NOT affect generate.py -
-#                     it always makes exactly one catalogue image per
-#                     fabric x style; tryon_plan is just carried through into
-#                     kiosk/catalogue/catalogue.json for the kiosk to read.
+#                     reference photo of the garment. Only used when
+#                     tryon_plan is a single string (see below) - a
+#                     multi-piece style uses `pieces` instead.
 # prompt            - the exact instruction sent to the image-editing model,
 #                     along with the template photo and the fabric swatch
 #                     photo. Keep the closing sentence (plain background,
 #                     front view, etc.) in every style's prompt - it's what
 #                     keeps catalogue photos looking consistent with each
-#                     other on the kiosk screen.
+#                     other on the kiosk screen. Only used when tryon_plan
+#                     is a single string, same as `template`.
+# tryon_plan        - how the KIOSK should apply this style during a live
+#                     try-on (Stage 2, backend/). Either a single category
+#                     ("tops", "bottoms", or "one-pieces") - use `template`/
+#                     `prompt` above for these - or a list of categories run
+#                     as separate passes, e.g. [bottoms, tops] for a suit -
+#                     use `pieces` below for these instead.
+# pieces            - REQUIRED when tryon_plan is a list instead of a single
+#                     string. A mapping from each tryon_plan category to its
+#                     OWN template + prompt, e.g.:
+#                       pieces:
+#                         bottoms: {template: ..., prompt: ...}
+#                         tops: {template: ..., prompt: ...}
+#                     Each piece is generated as its own separate catalogue
+#                     image. Don't use one combined "whole outfit" photo as
+#                     if it were a single piece - the backend runs each pass
+#                     with no masking, so if the "bottoms" pass's reference
+#                     image also shows a jacket, the model gets confused
+#                     about what to extract and bleeds jacket-like shapes
+#                     into the trousers (confirmed in testing, 2026-09-22:
+#                     exactly this, with a combined two-piece-suit photo
+#                     used for both passes). Take a separate clean photo of
+#                     each individual piece instead.
 # ---------------------------------------------------------------------------
 
 # Which fal.ai image-editing model generates each department's images, and
@@ -69,37 +83,69 @@ styles:
     name: "Two-Piece Suit"
     department: suiting
     fabric_prefixes: [SU]
-    template: catalogue/templates/two_piece_suit.jpg
     tryon_plan: [bottoms, tops]
-    prompt: >
-      Recreate this exact template garment - a two-piece suit consisting of
-      a single-breasted jacket with notch lapels, a standard button closure,
-      welt chest pocket and flap side pockets, worn with matching flat-front
-      trousers - keeping the identical cut, lapel shape, buttons and overall
-      silhouette. Remake it entirely in the fabric shown in the second
-      (swatch) image: preserve that fabric's true colour, weave texture and
-      pattern scale exactly as it appears in the swatch, do not substitute a
-      different colour or pattern. Photograph it against a plain light-grey
-      studio background, front view, full garment visible, no person, no
-      mannequin head.
+    pieces:
+      tops:
+        template: catalogue/templates/two_piece_suit_jacket.jpg
+        prompt: >
+          Recreate this exact template garment - a single-breasted suit
+          jacket with notch lapels, a standard button closure, welt chest
+          pocket and flap side pockets - keeping the identical cut, lapel
+          shape, buttons and overall silhouette. Remake it entirely in the
+          fabric shown in the second (swatch) image: preserve that fabric's
+          true colour, weave texture and pattern scale exactly as it
+          appears in the swatch, do not substitute a different colour or
+          pattern. Photograph it against a plain light-grey studio
+          background, front view, full garment visible, no person, no
+          mannequin head. Show only the jacket - no trousers, no other
+          garment.
+      bottoms:
+        template: catalogue/templates/two_piece_suit_trousers.jpg
+        prompt: >
+          Recreate this exact template garment - flat-front suit trousers
+          with a straight leg and matching waistband - keeping the
+          identical cut and overall silhouette. Remake it entirely in the
+          fabric shown in the second (swatch) image: preserve that fabric's
+          true colour, weave texture and pattern scale exactly as it
+          appears in the swatch, do not substitute a different colour or
+          pattern. Photograph it against a plain light-grey studio
+          background, front view, full garment visible, no person, no
+          mannequin head. Show only the trousers - no jacket, no other
+          garment.
 
   - id: three_piece_suit
     name: "Three-Piece Suit"
     department: suiting
     fabric_prefixes: [SU]
-    template: catalogue/templates/three_piece_suit.jpg
     tryon_plan: [bottoms, tops]
-    prompt: >
-      Recreate this exact template garment - a three-piece suit: a
-      single-breasted jacket with notch lapels over a matching single-breasted
-      waistcoat with a V-neck opening and five buttons, worn with matching
-      flat-front trousers - keeping the identical cut, lapel shape, buttons
-      and overall silhouette of all three pieces. Remake it entirely in the
-      fabric shown in the second (swatch) image: preserve that fabric's true
-      colour, weave texture and pattern scale exactly as it appears in the
-      swatch, do not substitute a different colour or pattern. Photograph it
-      against a plain light-grey studio background, front view, full garment
-      visible, no person, no mannequin head.
+    pieces:
+      tops:
+        template: catalogue/templates/three_piece_suit_jacket_waistcoat.jpg
+        prompt: >
+          Recreate this exact template garment - a single-breasted jacket
+          with notch lapels worn over a matching single-breasted waistcoat
+          with a V-neck opening and five buttons - keeping the identical
+          cut, lapel shape, buttons and overall silhouette of both pieces.
+          Remake it entirely in the fabric shown in the second (swatch)
+          image: preserve that fabric's true colour, weave texture and
+          pattern scale exactly as it appears in the swatch, do not
+          substitute a different colour or pattern. Photograph it against a
+          plain light-grey studio background, front view, full garment
+          visible, no person, no mannequin head. Show only the jacket and
+          waistcoat - no trousers, no other garment.
+      bottoms:
+        template: catalogue/templates/three_piece_suit_trousers.jpg
+        prompt: >
+          Recreate this exact template garment - flat-front suit trousers
+          with a straight leg and matching waistband - keeping the
+          identical cut and overall silhouette. Remake it entirely in the
+          fabric shown in the second (swatch) image: preserve that fabric's
+          true colour, weave texture and pattern scale exactly as it
+          appears in the swatch, do not substitute a different colour or
+          pattern. Photograph it against a plain light-grey studio
+          background, front view, full garment visible, no person, no
+          mannequin head. Show only the trousers - no jacket, no other
+          garment.
 
   - id: blazer
     name: "Blazer"

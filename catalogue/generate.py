@@ -118,13 +118,29 @@ def generate_one_image(endpoint: str, prompt: str, template_url: str, swatch_url
     return response.content
 
 
+def style_pieces(style: dict) -> List[Tuple[Optional[str], dict]]:
+    """
+    Returns [(piece_name, {"template": ..., "prompt": ...}), ...] for a style.
+
+    A single-template style (tryon_plan is a plain string) has exactly one
+    "piece" with piece_name=None - its own top-level template/prompt.
+    A multi-piece style (tryon_plan is a list, e.g. [bottoms, tops]) has one
+    piece per tryon_plan category, each with its own template/prompt under
+    `pieces:` in config.yaml - see the LICENSING-note-style comment on
+    `pieces` there for why they can't share one combined template.
+    """
+    if "pieces" in style:
+        return list(style["pieces"].items())
+    return [(None, {"template": style["template"], "prompt": style["prompt"]})]
+
+
 def plan_work(
     fabrics: List[Path], styles: List[dict], models: Dict[str, dict]
 ) -> Tuple[List[dict], float, List[str]]:
-    """Work out every (fabric, style, variant) still to generate, and its estimated cost."""
+    """Work out every (fabric, style, piece, variant) still to generate, and its estimated cost."""
     jobs: List[dict] = []
     warnings: List[str] = []
-    warned_styles = set()  # avoid repeating the same "no template" warning per fabric
+    warned = set()  # (style_id, piece_name) already warned about, across all fabrics
     total_cost = 0.0
 
     for fabric_path in fabrics:
@@ -137,39 +153,46 @@ def plan_work(
             continue
 
         for style in matches:
-            template_path = REPO_ROOT / style["template"]
-            if not template_path.exists():
-                if style["id"] not in warned_styles:
-                    warnings.append(
-                        f"skipping style '{style['id']}': template image not found at "
-                        f"{style['template']} - add one to generate this style"
-                    )
-                    warned_styles.add(style["id"])
-                continue
-
             model = models.get(style["department"])
             if model is None:
-                if style["id"] not in warned_styles:
+                if (style["id"], None) not in warned:
                     warnings.append(
                         f"skipping style '{style['id']}': no models.{style['department']} entry in config.yaml"
                     )
-                    warned_styles.add(style["id"])
+                    warned.add((style["id"], None))
                 continue
 
-            target_dir = OUTPUT_DIR / fabric_path.stem / style["id"]
-            for variant_index in missing_variant_indices(target_dir, VARIANTS_PER_COMBO):
-                jobs.append(
-                    {
-                        "fabric_path": fabric_path,
-                        "style": style,
-                        "template_path": template_path,
-                        "endpoint": model["endpoint"],
-                        "cost": float(model["approx_cost_usd"]),
-                        "target_dir": target_dir,
-                        "variant_index": variant_index,
-                    }
-                )
-                total_cost += float(model["approx_cost_usd"])
+            for piece_name, piece in style_pieces(style):
+                template_path = REPO_ROOT / piece["template"]
+                label = style["id"] if piece_name is None else f"{style['id']} ({piece_name})"
+                if not template_path.exists():
+                    if (style["id"], piece_name) not in warned:
+                        warnings.append(
+                            f"skipping style '{label}': template image not found at "
+                            f"{piece['template']} - add one to generate this piece"
+                        )
+                        warned.add((style["id"], piece_name))
+                    continue
+
+                target_dir = OUTPUT_DIR / fabric_path.stem / style["id"]
+                if piece_name is not None:
+                    target_dir = target_dir / piece_name
+
+                for variant_index in missing_variant_indices(target_dir, VARIANTS_PER_COMBO):
+                    jobs.append(
+                        {
+                            "fabric_path": fabric_path,
+                            "style": style,
+                            "piece_name": piece_name,
+                            "prompt": piece["prompt"],
+                            "template_path": template_path,
+                            "endpoint": model["endpoint"],
+                            "cost": float(model["approx_cost_usd"]),
+                            "target_dir": target_dir,
+                            "variant_index": variant_index,
+                        }
+                    )
+                    total_cost += float(model["approx_cost_usd"])
 
     return jobs, total_cost, warnings
 
@@ -215,15 +238,17 @@ def main() -> None:
     for job in jobs:
         fabric_path = job["fabric_path"]
         style = job["style"]
+        piece_name = job["piece_name"]
         target_dir = job["target_dir"]
         variant_path = target_dir / f"variant_{job['variant_index']:02d}.jpg"
 
-        print(f"[{fabric_path.stem} / {style['id']}] generating {variant_path.name} ...")
+        label = style["id"] if piece_name is None else f"{style['id']}/{piece_name}"
+        print(f"[{fabric_path.stem} / {label}] generating {variant_path.name} ...")
 
         template_url = upload_cached(job["template_path"], upload_cache)
         swatch_url = upload_cached(fabric_path, upload_cache)
 
-        image_bytes = generate_one_image(job["endpoint"], style["prompt"], template_url, swatch_url)
+        image_bytes = generate_one_image(job["endpoint"], job["prompt"], template_url, swatch_url)
         if image_bytes is None:
             failed += 1
             continue

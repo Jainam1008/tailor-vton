@@ -7,6 +7,13 @@ kiosk/catalogue/images/, and records it in kiosk/catalogue/catalogue.json
 for the kiosk to read. Rejecting removes any previously published/approved
 image for that fabric x style.
 
+Multi-piece styles (tryon_plan is a list in config.yaml, e.g. a two-piece
+suit's [bottoms, tops] - see config.yaml's comment on `pieces` for why)
+need one variant CHOSEN per piece before the style counts as complete for
+a fabric - the page shows each piece as its own row of variants, tracks
+your in-progress choices locally, and only publishes to catalogue.json
+once every piece has a choice.
+
 Run with: python catalogue/review.py
 Then open the printed http://127.0.0.1:5050 URL in your browser.
 """
@@ -26,6 +33,7 @@ CONFIG_PATH = CATALOGUE_DIR / "config.yaml"
 FABRICS_DIR = CATALOGUE_DIR / "fabrics"
 OUTPUT_DIR = CATALOGUE_DIR / "output_review"
 FABRIC_NAMES_PATH = OUTPUT_DIR / "_fabric_names.json"
+PIECE_CHOICES_PATH = OUTPUT_DIR / "_piece_choices.json"
 
 KIOSK_CATALOGUE_DIR = REPO_ROOT / "kiosk" / "catalogue"
 KIOSK_IMAGES_DIR = KIOSK_CATALOGUE_DIR / "images"
@@ -79,6 +87,31 @@ def save_catalogue(data: dict) -> None:
     save_json(CATALOGUE_JSON_PATH, data)
 
 
+def load_piece_choices() -> dict:
+    """{fabric_code: {style_id: {piece_name: variant_filename}}} - which
+    variant you've picked so far for each piece of a multi-piece style,
+    kept even before every piece has a choice (so partial progress across
+    browser visits isn't lost)."""
+    return load_json(PIECE_CHOICES_PATH, {})
+
+
+def get_piece_choices(fabric_code: str, style_id: str) -> Dict[str, str]:
+    return load_piece_choices().get(fabric_code, {}).get(style_id, {})
+
+
+def save_piece_choice(fabric_code: str, style_id: str, piece_name: str, variant_filename: str) -> None:
+    choices = load_piece_choices()
+    choices.setdefault(fabric_code, {}).setdefault(style_id, {})[piece_name] = variant_filename
+    save_json(PIECE_CHOICES_PATH, choices)
+
+
+def clear_piece_choice(fabric_code: str, style_id: str, piece_name: str) -> None:
+    choices = load_piece_choices()
+    if fabric_code in choices and style_id in choices[fabric_code]:
+        choices[fabric_code][style_id].pop(piece_name, None)
+        save_json(PIECE_CHOICES_PATH, choices)
+
+
 # --- image helpers -----------------------------------------------------------
 
 
@@ -125,16 +158,47 @@ def scan_review_items() -> List[dict]:
             style = STYLES_BY_ID.get(style_dir.name)
             if style is None:
                 continue
-            variants = sorted(p.name for p in style_dir.iterdir() if p.suffix.lower() == ".jpg")
-            if not variants:
-                continue
-            styles_for_fabric.append(
-                {
-                    "style": style,
-                    "variants": variants,
-                    "approved": f"{fabric_code}__{style['id']}" in approved_ids,
-                }
-            )
+
+            if "pieces" in style:
+                piece_choices = get_piece_choices(fabric_code, style["id"])
+                pieces_data = []
+                for piece_name in style["pieces"].keys():
+                    piece_dir = style_dir / piece_name
+                    if not piece_dir.is_dir():
+                        continue
+                    variants = sorted(p.name for p in piece_dir.iterdir() if p.suffix.lower() == ".jpg")
+                    if not variants:
+                        continue
+                    pieces_data.append(
+                        {
+                            "piece_name": piece_name,
+                            "variants": variants,
+                            "chosen_variant": piece_choices.get(piece_name),
+                        }
+                    )
+                if not pieces_data:
+                    continue
+                styles_for_fabric.append(
+                    {
+                        "style": style,
+                        "is_multi_piece": True,
+                        "pieces": pieces_data,
+                        "approved": f"{fabric_code}__{style['id']}" in approved_ids,
+                    }
+                )
+            else:
+                variants = sorted(p.name for p in style_dir.iterdir() if p.suffix.lower() == ".jpg")
+                if not variants:
+                    continue
+                styles_for_fabric.append(
+                    {
+                        "style": style,
+                        "is_multi_piece": False,
+                        "variants": variants,
+                        "approved": f"{fabric_code}__{style['id']}" in approved_ids,
+                    }
+                )
+
         if styles_for_fabric:
             fabrics.append(
                 {
@@ -147,7 +211,7 @@ def scan_review_items() -> List[dict]:
     return fabrics
 
 
-# --- approve / reject actions -------------------------------------------------
+# --- approve / reject actions (single-template styles) -----------------------
 
 
 def approve(fabric_code: str, style_id: str, variant_filename: str, fabric_name: str) -> None:
@@ -200,6 +264,86 @@ def reject(fabric_code: str, style_id: str) -> None:
         published_image.unlink()
 
 
+# --- choose / clear actions (multi-piece styles) ------------------------------
+
+
+def choose_piece(fabric_code: str, style_id: str, piece_name: str, variant_filename: str, fabric_name: str) -> None:
+    style = STYLES_BY_ID.get(style_id)
+    if style is None or "pieces" not in style:
+        return
+    variant_path = OUTPUT_DIR / fabric_code / style_id / piece_name / variant_filename
+    if not variant_path.exists():
+        return
+
+    save_piece_choice(fabric_code, style_id, piece_name, variant_filename)
+    _publish_if_complete(fabric_code, style_id, fabric_name)
+
+
+def reject_piece(fabric_code: str, style_id: str, piece_name: str) -> None:
+    clear_piece_choice(fabric_code, style_id, piece_name)
+
+    # This style was previously fully published but is now missing a piece -
+    # unpublish it rather than leave a stale/incomplete entry live.
+    style = STYLES_BY_ID.get(style_id) or {}
+    item_id = f"{fabric_code}__{style_id}"
+    catalogue = load_catalogue()
+    remaining = [item for item in catalogue["items"] if item["id"] != item_id]
+    if len(remaining) != len(catalogue["items"]):
+        catalogue["items"] = remaining
+        save_catalogue(catalogue)
+    for pname in style.get("pieces", {}).keys():
+        published = KIOSK_IMAGES_DIR / f"{item_id}__{pname}.jpg"
+        if published.exists():
+            published.unlink()
+
+
+def _publish_if_complete(fabric_code: str, style_id: str, fabric_name: str) -> None:
+    """If every piece of this style now has a chosen variant, publish all of
+    them and write/update the catalogue.json entry. Does nothing (silently)
+    if choices are still incomplete - that's the normal in-progress state."""
+    style = STYLES_BY_ID.get(style_id)
+    if style is None or "pieces" not in style:
+        return
+
+    piece_names = list(style["pieces"].keys())
+    choices = get_piece_choices(fabric_code, style_id)
+    if not all(name in choices for name in piece_names):
+        return
+
+    item_id = f"{fabric_code}__{style_id}"
+    images = {}
+    for piece_name in piece_names:
+        variant_filename = choices[piece_name]
+        variant_path = OUTPUT_DIR / fabric_code / style_id / piece_name / variant_filename
+        if not variant_path.exists():
+            return  # a chosen file went missing somehow - don't publish a broken entry
+        image_dest = KIOSK_IMAGES_DIR / f"{item_id}__{piece_name}.jpg"
+        resize_and_save_jpeg(variant_path, image_dest, max_height=MAX_GARMENT_IMAGE_HEIGHT)
+        images[piece_name] = f"catalogue/images/{item_id}__{piece_name}.jpg"
+
+    swatch_dest = KIOSK_SWATCHES_DIR / f"{fabric_code}.jpg"
+    fabric_photo = find_fabric_photo(fabric_code)
+    if fabric_photo is not None:
+        resize_and_save_jpeg(fabric_photo, swatch_dest, max_dimension=SWATCH_THUMBNAIL_MAX_DIMENSION)
+
+    catalogue = load_catalogue()
+    catalogue["items"] = [item for item in catalogue["items"] if item["id"] != item_id]
+    catalogue["items"].append(
+        {
+            "id": item_id,
+            "fabric_code": fabric_code,
+            "fabric_name": fabric_name,
+            "department": style["department"],
+            "style_id": style_id,
+            "style_name": style["name"],
+            "images": images,
+            "swatch": f"catalogue/images/swatches/{fabric_code}.jpg",
+            "tryon_plan": style["tryon_plan"],
+        }
+    )
+    save_catalogue(catalogue)
+
+
 # --- HTML rendering ------------------------------------------------------------
 
 PAGE_STYLE = """
@@ -212,11 +356,15 @@ h1 { margin-top: 0; }
 .fabric-code { color: #888; font-size: 0.9em; }
 .style-row { border-top: 1px solid #eee; padding: 14px 0; }
 .style-row h3 { margin: 0 0 8px 0; display: flex; align-items: center; gap: 10px; }
+.piece-section { margin: 10px 0 10px 12px; padding-left: 12px; border-left: 3px solid #eee; }
+.piece-section h4 { margin: 0 0 6px 0; font-size: 0.95em; color: #555; }
 .badge { font-size: 0.75em; padding: 2px 8px; border-radius: 10px; background: #e0e0e0; color: #444; }
 .badge.approved { background: #d4edda; color: #1e6b30; }
+.badge.in-progress { background: #fff3cd; color: #8a6500; }
 .variants { display: flex; gap: 12px; flex-wrap: wrap; align-items: flex-start; }
 .variant { text-align: center; }
 .variant img { width: 160px; height: auto; border-radius: 4px; border: 1px solid #ddd; display: block; }
+.variant.chosen img { border: 3px solid #2e7d32; }
 .variant button { margin-top: 6px; }
 button { cursor: pointer; padding: 6px 12px; border-radius: 4px; border: 1px solid #ccc; background: #fafafa; }
 button.approve { background: #2e7d32; color: #fff; border-color: #2e7d32; }
@@ -272,10 +420,23 @@ def render_fabric_card(fabric: dict) -> str:
 
 def render_style_row(fabric_code: str, entry: dict) -> str:
     style = entry["style"]
+    if entry["is_multi_piece"]:
+        chosen_count = sum(1 for p in entry["pieces"] if p["chosen_variant"])
+        total = len(entry["pieces"])
+        if entry["approved"]:
+            badge = '<span class="badge approved">Approved</span>'
+        elif chosen_count:
+            badge = f'<span class="badge in-progress">{chosen_count}/{total} pieces chosen</span>'
+        else:
+            badge = '<span class="badge">Pending</span>'
+        pieces_html = "".join(render_piece_section(fabric_code, style["id"], p) for p in entry["pieces"])
+        return f"""<div class="style-row">
+    <h3>{escape(style["name"])} {badge}</h3>
+    {pieces_html}
+  </div>"""
+
     badge = '<span class="badge approved">Approved</span>' if entry["approved"] else '<span class="badge">Pending</span>'
-    variants_html = "".join(
-        render_variant(fabric_code, style["id"], filename) for filename in entry["variants"]
-    )
+    variants_html = "".join(render_variant(fabric_code, style["id"], filename) for filename in entry["variants"])
     return f"""<div class="style-row">
     <h3>{escape(style["name"])} {badge}</h3>
     <div class="variants">
@@ -286,6 +447,41 @@ def render_style_row(fabric_code: str, entry: dict) -> str:
       </form>
     </div>
   </div>"""
+
+
+def render_piece_section(fabric_code: str, style_id: str, piece: dict) -> str:
+    piece_name = piece["piece_name"]
+    chosen = piece["chosen_variant"]
+    variants_html = "".join(
+        render_piece_variant(fabric_code, style_id, piece_name, filename, filename == chosen)
+        for filename in piece["variants"]
+    )
+    reject_action = f"reject_piece:{fabric_code}:{style_id}:{piece_name}"
+    chosen_label = f" - chosen: {escape(chosen)}" if chosen else ""
+    return f"""<div class="piece-section">
+      <h4>{escape(piece_name.capitalize())}{chosen_label}</h4>
+      <div class="variants">
+        {variants_html}
+        <form method="post" action="/action" style="align-self:center;">
+          <input type="hidden" name="action" value="{escape(reject_action)}">
+          <button type="submit" class="reject">Clear choice</button>
+        </form>
+      </div>
+    </div>"""
+
+
+def render_piece_variant(fabric_code: str, style_id: str, piece_name: str, filename: str, is_chosen: bool) -> str:
+    img_url = f"/media/output_review/{fabric_code}/{style_id}/{piece_name}/{filename}"
+    action_value = f"choose_piece:{fabric_code}:{style_id}:{piece_name}:{filename}"
+    css_class = "variant chosen" if is_chosen else "variant"
+    label = "Chosen" if is_chosen else "Choose this one"
+    return f"""<div class="{css_class}">
+        <img src="{escape(img_url)}" alt="{escape(filename)}">
+        <form method="post" action="/action">
+          <input type="hidden" name="action" value="{escape(action_value)}">
+          <button type="submit" class="approve">{label}</button>
+        </form>
+      </div>"""
 
 
 def render_variant(fabric_code: str, style_id: str, filename: str) -> str:
@@ -342,8 +538,12 @@ def action():
 
     if verb == "approve" and len(parts) == 4:
         approve(fabric_code, style_id, parts[3], fabric_name)
-    elif verb == "reject":
+    elif verb == "reject" and len(parts) == 3:
         reject(fabric_code, style_id)
+    elif verb == "choose_piece" and len(parts) == 5:
+        choose_piece(fabric_code, style_id, parts[3], parts[4], fabric_name)
+    elif verb == "reject_piece" and len(parts) == 4:
+        reject_piece(fabric_code, style_id, parts[3])
     else:
         abort(400)
 

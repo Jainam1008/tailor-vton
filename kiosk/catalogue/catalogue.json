@@ -7,7 +7,10 @@
       "department": "suiting",
       "style_id": "two_piece_suit",
       "style_name": "Two-Piece Suit",
-      "image": "catalogue/images/SU-01__two_piece_suit.jpg",
+      "images": {
+        "tops": "catalogue/images/SU-01__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-01__two_piece_suit__bottoms.jpg"
+      },
       "swatch": "catalogue/images/swatches/SU-01.jpg",
       "tryon_plan": [
         "bottoms",
@@ -21,7 +24,10 @@
       "department": "suiting",
       "style_id": "two_piece_suit",
       "style_name": "Two-Piece Suit",
-      "image": "catalogue/images/SU-02__two_piece_suit.jpg",
+      "images": {
+        "tops": "catalogue/images/SU-02__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-02__two_piece_suit__bottoms.jpg"
+      },
       "swatch": "catalogue/images/swatches/SU-02.jpg",
       "tryon_plan": [
         "bottoms",
@@ -35,7 +41,10 @@
       "department": "suiting",
       "style_id": "two_piece_suit",
       "style_name": "Two-Piece Suit",
-      "image": "catalogue/images/Su-03__two_piece_suit.jpg",
+      "images": {
+        "tops": "catalogue/images/Su-03__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/Su-03__two_piece_suit__bottoms.jpg"
+      },
       "swatch": "catalogue/images/swatches/Su-03.jpg",
       "tryon_plan": [
         "bottoms",
@@ -49,7 +58,10 @@
       "department": "suiting",
       "style_id": "two_piece_suit",
       "style_name": "Two-Piece Suit",
-      "image": "catalogue/images/SU-04__two_piece_suit.jpg",
+      "images": {
+        "tops": "catalogue/images/SU-04__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-04__two_piece_suit__bottoms.jpg"
+      },
       "swatch": "catalogue/images/swatches/SU-04.jpg",
       "tryon_plan": [
         "bottoms",
@@ -63,7 +75,10 @@
       "department": "suiting",
       "style_id": "two_piece_suit",
       "style_name": "Two-Piece Suit",
-      "image": "catalogue/images/SU-05__two_piece_suit.jpg",
+      "images": {
+        "tops": "catalogue/images/SU-05__two_piece_suit__tops.jpg",
+        "bottoms": "catalogue/images/SU-05__two_piece_suit__bottoms.jpg"
+      },
       "swatch": "catalogue/images/swatches/SU-05.jpg",
       "tryon_plan": [
         "bottoms",
