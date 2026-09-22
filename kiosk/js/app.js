@@ -160,6 +160,7 @@
     setCameraState("live");
     try {
       await Camera.start(el("camera-video"), handleStreamEndedUnexpectedly);
+      startCameraWatchdog();
     } catch (err) {
       recordError("camera start", err);
       el("camera-error").textContent = err.message;
@@ -167,40 +168,84 @@
     }
   }
 
+  // Field-confirmed (2026-09-22): a real webcam's track can die mid-session
+  // (driver/OS power management, not anything the page does) WITHOUT ever
+  // firing the standard "ended" event - so handleStreamEndedUnexpectedly
+  // below (the event-based fast path) isn't enough on its own. This
+  // watchdog actively polls Camera.isHealthy() as a fallback, and keeps
+  // retrying quietly in the background rather than giving up after one
+  // failed reconnect attempt - a camera that's slow to come back still
+  // recovers on its own if the customer just waits a few seconds, instead
+  // of being stuck on a hard error immediately.
+  const WATCHDOG_INTERVAL_MS = 1500;
+  const RECOVERY_GIVE_UP_MS = 20000; // only show a visible error after this long of continuous failure
+  let cameraWatchdogTimer = null;
   let streamRecoveryInFlight = false;
+  let streamUnhealthySince = null;
 
-  /**
-   * Fired when the camera track ends on its own mid-session (confirmed in
-   * the field: real webcam driver/OS power management, not anything the
-   * page does - see the comment on Camera.start's onStreamEnded param).
-   * Silently re-acquires the stream rather than making the customer hunt
-   * for a "Try again" button - only falls back to the visible error
-   * screen if the automatic reconnect itself fails.
-   */
-  function handleStreamEndedUnexpectedly() {
-    if (currentScreenName !== "camera" || streamRecoveryInFlight) return;
+  function startCameraWatchdog() {
+    stopCameraWatchdog();
+    cameraWatchdogTimer = setInterval(() => {
+      if (currentScreenName !== "camera") return;
+      if (Camera.isHealthy()) {
+        streamUnhealthySince = null;
+        return;
+      }
+      if (streamUnhealthySince === null) {
+        streamUnhealthySince = Date.now();
+        console.warn("[Camera] watchdog detected an unhealthy stream");
+      }
+      attemptStreamRecovery();
+    }, WATCHDOG_INTERVAL_MS);
+  }
+
+  function stopCameraWatchdog() {
+    clearInterval(cameraWatchdogTimer);
+    cameraWatchdogTimer = null;
+    streamUnhealthySince = null;
+  }
+
+  function attemptStreamRecovery() {
+    if (streamRecoveryInFlight) return;
     streamRecoveryInFlight = true;
     clearInterval(countdownTimer);
     el("camera-countdown").parentElement.classList.remove("is-active");
-    console.warn("[Camera] attempting automatic silent stream recovery...");
+    console.warn("[Camera] attempting stream recovery...");
     Camera.start(el("camera-video"), handleStreamEndedUnexpectedly)
       .then(() => {
         streamRecoveryInFlight = false;
-        console.warn("[Camera] automatic recovery succeeded");
+        streamUnhealthySince = null;
+        console.warn("[Camera] recovery succeeded");
         setCameraState("live");
       })
       .catch((err) => {
         streamRecoveryInFlight = false;
-        recordError("camera auto-recovery", err);
-        el("camera-error").textContent = "The camera disconnected and couldn't reconnect automatically - please try again.";
-        setCameraState("error");
+        const downForMs = streamUnhealthySince ? Date.now() - streamUnhealthySince : 0;
+        console.warn(`[Camera] recovery attempt failed (unhealthy for ${(downForMs / 1000).toFixed(1)}s so far):`, err.message);
+        if (downForMs >= RECOVERY_GIVE_UP_MS) {
+          recordError("camera auto-recovery", err);
+          // The watchdog keeps running and will keep retrying even after
+          // this shows - if the camera comes back on its own, the .then()
+          // branch above will silently dismiss this and return to live.
+          el("camera-error").textContent =
+            "The camera disconnected and hasn't reconnected yet. Still trying automatically - you can also tap Try again.";
+          setCameraState("error");
+        }
       });
+  }
+
+  /** Fast path: fires immediately if the browser's "ended" event does fire. */
+  function handleStreamEndedUnexpectedly() {
+    if (currentScreenName !== "camera") return;
+    if (streamUnhealthySince === null) streamUnhealthySince = Date.now();
+    attemptStreamRecovery();
   }
 
   el("camera-retry").addEventListener("click", startCameraFlow);
 
   el("camera-back").addEventListener("click", () => {
     Camera.stop();
+    stopCameraWatchdog();
     clearInterval(countdownTimer);
     goToScreen("consent");
   });
@@ -243,6 +288,7 @@
 
   el("camera-use-photo").addEventListener("click", () => {
     Camera.stop();
+    stopCameraWatchdog();
     populateDepartments();
     goToScreen("department");
   });
@@ -279,6 +325,7 @@
   document.querySelectorAll('[data-go="attract"]').forEach((btnEl) => {
     btnEl.addEventListener("click", () => {
       Camera.stop();
+      stopCameraWatchdog();
       goToScreen("attract");
     });
   });
@@ -566,6 +613,7 @@
 
   function wipeSessionAndReturnToAttract() {
     Camera.stop();
+    stopCameraWatchdog();
     clearInterval(countdownTimer);
     stopProcessingMessages();
     session = freshSession();

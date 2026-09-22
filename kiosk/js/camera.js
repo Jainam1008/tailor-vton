@@ -154,6 +154,19 @@ const Camera = (() => {
   }
 
   /**
+   * True if the current stream is genuinely alive. The "ended" event on
+   * the track (used in start()'s onStreamEnded callback) is the fast
+   * path when it fires - but confirmed in the field (2026-09-22) that a
+   * real hardware/driver-level camera failure does not always fire it
+   * promptly, or at all. This is the fallback: callers poll it directly
+   * instead of only waiting on the event.
+   */
+  function isHealthy() {
+    const track = stream ? stream.getVideoTracks()[0] : null;
+    return !!(stream && stream.active && track && track.readyState === "live");
+  }
+
+  /**
    * Captures the current video frame, center-crops it to a 2:3 portrait
    * rectangle (matching what the customer sees framed on screen regardless
    * of the camera's native aspect ratio), then downsizes to ~768x1152.
@@ -255,5 +268,5 @@ const Camera = (() => {
     return { dataUrl, base64 };
   }
 
-  return { start, stop, capture };
+  return { start, stop, capture, isHealthy };
 })();
